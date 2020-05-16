@@ -50,11 +50,6 @@ def best_first_graph_search_custom(problem, f):
                     frontier.append(child)
     return None, num_of_removed_node
 
-# This is a modified version of astar_search_custom provided in search.py
-# This version is used to compute some benchmarks
-def astar_search_custom(problem, h=None):
-    h = memoize(h or problem.h, 'h')
-    return best_first_graph_search_custom(problem, lambda n: n.path_cost + h(n))
 
 def manhattan_heuristic(node):
     res = 0
@@ -68,6 +63,12 @@ def max_of_manhattan_and_misplaced(problem):
         return max(manhattan_heuristic(state), problem.h(state))
     return func
 
+# This is a modified version of astar_search_custom provided in search.py
+# This version is used to compute some benchmarks
+def astar_search_custom(problem, h=None):
+    h = memoize(h or problem.h, 'h')
+    return  best_first_graph_search_custom(problem, lambda n: n.path_cost + h(n))
+
 def astar_search_using_manhattan(problem):
     return astar_search_custom(problem, manhattan_heuristic)
 
@@ -77,9 +78,9 @@ def astar_search_using_max_of_manhattan_and_misplaced(problem):
 def compare_search_algorithms():
     puzzles = generate_puzzles(10)
     searchers = [{"func": astar_search_custom,
-                  "name": "astar search using misplaced"},
+                  "name": "astar search using misplaced heuristic"},
                  {"func": astar_search_using_manhattan,
-                  "name": "astar search using manhattan"},
+                  "name": "astar search using manhattan heuristic"},
                  {"func": astar_search_using_max_of_manhattan_and_misplaced,
                   "name": "astar search using max of manhattan and misplaced"}]
     for puzzle in puzzles:
@@ -91,13 +92,11 @@ def compare_search_algorithms():
             print(searcher["name"].upper())
             goal_state, num_of_removed_node = searcher["func"](puzzle)
             if goal_state:
-#                print("Solved for puzzle: ", puzzle.initial, len(goal_state.solution()))
                 print("Running time: ", "")
                 print("Length of solution: ", len(goal_state.solution()))
                 print("Total number of removed nodes: ", num_of_removed_node)
-#            print("--------------------------------------")
         print("===========================================")
-            
+        
 trivial_problem = EightPuzzle((2,1,3,5,4,0,6,7,8))
 trivial_2 = EightPuzzle((1,2,3,4,5,6,0,7,8))
 if __name__ == "__main__":
