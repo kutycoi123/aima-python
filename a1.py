@@ -29,6 +29,7 @@ def generate_puzzles(n, kind="8puzzle"):
 # This is a modified version of best_first_graph_seach provided in search.py
 # This version is used to compute some benchmarks
 def best_first_graph_search_custom(problem, f):
+    start_time = time.time()
     f = memoize(f, 'f')
     num_of_removed_node = 0
     node = Node(problem.initial)
@@ -39,7 +40,8 @@ def best_first_graph_search_custom(problem, f):
         node = frontier.pop()
         num_of_removed_node += 1
         if problem.goal_test(node.state):
-            return node, num_of_removed_node
+            elapsed_time = time.time() - start_time
+            return node, num_of_removed_node, elapsed_time
         explored.add(node.state)
         for child in node.expand(problem):
             if child.state not in explored and child not in frontier:
@@ -48,7 +50,8 @@ def best_first_graph_search_custom(problem, f):
                 if f(child) < frontier[child]:
                     del frontier[child]
                     frontier.append(child)
-    return None, num_of_removed_node
+    elapsed_time = time.time() - start_time
+    return None, num_of_removed_node, elapsed_time 
 
 
 def manhattan_heuristic(node):
@@ -90,9 +93,9 @@ def compare_search_algorithms():
         for searcher in searchers:
             print("--------------------------------------")
             print(searcher["name"].upper())
-            goal_state, num_of_removed_node = searcher["func"](puzzle)
+            goal_state, num_of_removed_node,elapsed_time = searcher["func"](puzzle)
             if goal_state:
-                print("Running time: ", "")
+                print("Running time (in seconds): ", elapsed_time)
                 print("Length of solution: ", len(goal_state.solution()))
                 print("Total number of removed nodes: ", num_of_removed_node)
         print("===========================================")
