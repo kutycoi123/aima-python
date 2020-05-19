@@ -121,6 +121,7 @@ def make_rand_puzzle(kind="EightPuzzle"):
                 return DuckPuzzle(tuple(list_state))
             
 def display(state, kind="EightPuzzle"):
+    """Display puzzle state based of puzzle kind"""
     if kind == "EightPuzzle":
         for i in range(3):
             for j in range(3):
@@ -136,6 +137,7 @@ def display(state, kind="EightPuzzle"):
             for j in range(3):
                 print(state[i*3+j], end='')
             print()
+
 def get_state_string(state, kind="EightPuzzle"):
     state_string = ""
     if kind == "EightPuzzle":
@@ -197,9 +199,9 @@ def manhattan_heuristic(node):
     return res
 
 def max_of_manhattan_and_misplaced(problem):
-    def func(state):
+    def h(state):
         return max(manhattan_heuristic(state), problem.h(state))
-    return func
+    return h
 
 # This is a modified version of astar_search_custom provided in search.py
 # This version is used to compute some benchmarks
@@ -212,6 +214,7 @@ def astar_search_using_manhattan(problem):
 
 def astar_search_using_max_of_manhattan_and_misplaced(problem):
     return astar_search_custom(problem, max_of_manhattan_and_misplaced(problem))
+
 test_puzzles = [EightPuzzle((1,6,2,3,4,5,7,8,0)),
                 EightPuzzle((8,4,3,5,7,6,2,1,0)),
                 EightPuzzle((6,2,3,4,5,0,8,7,1)),
