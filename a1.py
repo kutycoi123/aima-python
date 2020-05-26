@@ -3,10 +3,13 @@ from utils import *
 import random
 import threading
 import time
+
 TOTAL_PUZZLES = 10
-EIGHTPUZZLE_PATH = "EightPuzzle_benchmarks.txt"
-DUCKPUZZLE_PATH  = "DuckPuzzle_benchmarks.txt"
-TEST_PATH = "Test_benchmarks.txt"
+EIGHT_PUZZLE = "EightPuzzle"
+DUCK_PUZZLE = "DuckPuzzle"
+#EIGHTPUZZLE_PATH = "EightPuzzle_benchmarks.txt"
+#DUCKPUZZLE_PATH  = "DuckPuzzle_benchmarks.txt"
+
 class DuckPuzzle(Problem):
     def __init__(self, initial, goal=(1, 2, 3, 4, 5, 6, 7, 8, 0)):
         """ Define goal state and initialize a problem """
@@ -68,7 +71,6 @@ class DuckPuzzle(Problem):
                       2 3 is not solvable
             """
             one_square = state.index(1)
-
             nums = list(filter(lambda x: x not in [1,2,3], state[:4]))
             remaining_num = 0 # the remaining number in 4 numbers that is not 1, 2 or 3
             if len(nums) > 1:
@@ -99,11 +101,6 @@ class DuckPuzzle(Problem):
         if not is_2x2_puzzle_solvable:
             return False
 
-        #remaining_num = 0 # the remaining number in 4 numbers that is not 1, 2 or 3
-        #for i in state[:4]:
-        #    if i not in [1,2,3]:
-        #        remaining_num = i
-        #        break
         remaining_num = list(filter(lambda x: x not in [1,2,3], state[:4]))[0]
         inversion = 0
         clone_state = list(state)
@@ -125,28 +122,35 @@ class DuckPuzzle(Problem):
         return sum(s != g for (s, g) in zip(node.state, self.goal))
         
 
-def make_rand_puzzle(kind="EightPuzzle"):
+def make_rand_puzzle(kind=EIGHT_PUZZLE):
     state  = (0,1,2,3,4,5,6,7,8)
     list_state = list(state) # random.shuffle needs list
     tmp = EightPuzzle(state) # to use check_solvability
-    if kind == "DuckPuzzle":
+    if kind == DUCK_PUZZLE:
         tmp = DuckPuzzle(state)
     while True:
         random.shuffle(list_state)
         if (tmp.check_solvability(list_state)):
-            if kind == "EightPuzzle":
+            if kind == EIGHT_PUZZLE:
                 return EightPuzzle(tuple(list_state))
-            if kind == "DuckPuzzle":
+            if kind == DUCK_PUZZLE:
                 return DuckPuzzle(tuple(list_state))
             
-def display(state, kind="EightPuzzle"):
+def make_rand_8puzzle():
+    return make_rand_puzzle(EIGHT_PUZZLE)
+
+def generate_puzzles(n, kind=EIGHT_PUZZLE):
+    """Generate n number of puzzles"""
+    return [make_rand_puzzle(kind) for _ in range(n)]
+            
+def display(state, kind=EIGHT_PUZZLE):
     """Display puzzle state based on puzzle kind"""
-    if kind == "EightPuzzle":
+    if kind == EIGHT_PUZZLE:
         for i in range(3):
             for j in range(3):
                 print(state[i*3 + j], end=' ')
             print()
-    elif kind == "DuckPuzzle":
+    elif kind == DUCK_PUZZLE:
         for i in range(2):
             for j in range(2):
                 print(state[i*2+j], end-'')
@@ -160,12 +164,12 @@ def display(state, kind="EightPuzzle"):
 def get_state_string(state, kind="EightPuzzle"):
     """Return string representation for a given state"""
     state_string = ""
-    if kind == "EightPuzzle":
+    if kind == EIGHT_PUZZLE:
         for i in range(3):
             for j in range(3):
                 state_string += str(state[i*3+j]) + " "
             state_string += "\n"
-    elif kind == "DuckPuzzle":
+    elif kind == DUCK_PUZZLE:
         for i in range(2):
             for j in range(2):
                 if i == 1 and j == 1:
@@ -179,8 +183,6 @@ def get_state_string(state, kind="EightPuzzle"):
             state_string += "\n  "
     return state_string
     
-def generate_puzzles(n, kind="EightPuzzle"):
-    return [make_rand_puzzle(kind) for _ in range(n)]
 
 
 # This is a modified version of best_first_graph_seach provided in search.py
@@ -238,13 +240,8 @@ def astar_search_using_manhattan(problem):
 def astar_search_using_max_of_manhattan_and_misplaced(problem):
     return my_astar_search(problem, max_of_manhattan_and_misplaced(problem))
 
-test_puzzles = [EightPuzzle((1,6,2,3,4,5,7,8,0)),
-                EightPuzzle((8,4,3,5,7,6,2,1,0)),
-                EightPuzzle((6,2,3,4,5,0,8,7,1)),
-                EightPuzzle((3,5,1,8,6,2,7,0,4)),
-                EightPuzzle((4,7,3,8,0,1,2,5,6))]
 
-def compare_search_algorithms(puzzles, kind="EightPuzzle", path=None):
+def compare_search_algorithms(puzzles, kind=EIGHT_PUZZLE, path=None):
     searchers = [{"func": astar_search_using_misplaced,
                   "name": "astar search using misplaced heuristic"},
                  {"func": astar_search_using_manhattan,
@@ -270,30 +267,25 @@ def compare_search_algorithms(puzzles, kind="EightPuzzle", path=None):
                     outfile.write("Total number of removed nodes: "
                                   + str(num_of_removed_node) + "\n")
         
+test_puzzles = [EightPuzzle((7,3,4,1,0,8,2,6,5)),
+                EightPuzzle((4,6,7,5,0,2,3,1,8)),
+                EightPuzzle((6,2,5,3,4,1,0,8,7)),
+                EightPuzzle((0,2,5,8,7,3,1,4,6)),
+                EightPuzzle((1,7,8,3,2,4,6,0,5)),
+                EightPuzzle((4,0,7,2,1,8,6,3,5)),
+                EightPuzzle((4,1,7,3,5,2,8,0,6)),
+                EightPuzzle((7,1,2,0,4,6,5,3,8)),
+                EightPuzzle((1,3,4,6,2,5,0,7,8)),
+                EightPuzzle((7,5,0,6,2,1,4,3,8))]
 
-def eight_puzzles_benchmarks():
-    puzzle_kind = "EightPuzzle"
-    print("Benchmarking for EightPuzzle")
-    start_time = time.time()
-    eight_puzzles = generate_puzzles(TOTAL_PUZZLES, kind=puzzle_kind)
-#    eight_puzzles = [EightPuzzle((8,7,6,4,0,3,5,2,1))]
-    compare_search_algorithms(eight_puzzles, kind=puzzle_kind, path=TEST_PATH)
-    elapsed_time = time.time() - start_time
-    print("Total running time(in seconds) for all puzzles:", elapsed_time)
-    print("Check details for benchmarking in EightPuzzle_benchmark.txt")
-    
-def duck_puzzles_benchmarks():
-    puzzle_kind = "DuckPuzzle"
-    print("Benchmarking for DuckPuzzle")
-    start_time = time.time()
-    duck_puzzles = generate_puzzles(TOTAL_PUZZLES, kind=puzzle_kind)
-    #duck_puzzles = [DuckPuzzle((8,1,3,2,7,5,4,0,6))]
-    compare_search_algorithms(duck_puzzles, kind=puzzle_kind)
-    elapsed_time = time.time() - start_time
-    print("Total running time(in seconds) for all puzzles:", elapsed_time)
-    print("Check details for benchmarking in DuckPuzzle_benchmark.txt")
+def puzzle_benchmark(kind):
+    """Calculate benchmarks for solving puzzles"""
+    puzzles = generate_puzzles(TOTAL_PUZZLES, kind=kind)
+    #puzzles = test_puzzles
+    compare_search_algorithms(puzzles, kind=kind)
+
     
 if __name__ == "__main__":
     pass
-    eight_puzzles_benchmarks()
-    #duck_puzzles_benchmarks()
+    puzzle_benchmark(EIGHT_PUZZLE)
+    #puzzle_benchmark(DUCK_PUZZLE)
