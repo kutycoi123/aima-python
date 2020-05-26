@@ -7,8 +7,6 @@ import time
 TOTAL_PUZZLES = 10
 EIGHT_PUZZLE = "EightPuzzle"
 DUCK_PUZZLE = "DuckPuzzle"
-#EIGHTPUZZLE_PATH = "EightPuzzle_benchmarks.txt"
-#DUCKPUZZLE_PATH  = "DuckPuzzle_benchmarks.txt"
 
 class DuckPuzzle(Problem):
     def __init__(self, initial, goal=(1, 2, 3, 4, 5, 6, 7, 8, 0)):
@@ -136,15 +134,20 @@ def make_rand_puzzle(kind=EIGHT_PUZZLE):
             if kind == DUCK_PUZZLE:
                 return DuckPuzzle(tuple(list_state))
             
-def make_rand_8puzzle():
-    return make_rand_puzzle(EIGHT_PUZZLE)
-
 def generate_puzzles(n, kind=EIGHT_PUZZLE):
     """Generate n number of puzzles"""
     return [make_rand_puzzle(kind) for _ in range(n)]
             
+def make_rand_8puzzle():
+    """Return a random 8puzzle"""
+    return make_rand_puzzle(EIGHT_PUZZLE)
+
+def make_rand_duckpuzzle():
+    """Return a random duckpuzzle"""
+    return make_rand_puzzle(DUCK_PUZZLE)
+
 def display(state, kind=EIGHT_PUZZLE):
-    """Display puzzle state based on puzzle kind"""
+    """Display 8puzzle(default) and duckpuzzle state based on passed value of "kind" parameter"""
     if kind == EIGHT_PUZZLE:
         for i in range(3):
             for j in range(3):
@@ -267,21 +270,20 @@ def compare_search_algorithms(puzzles, kind=EIGHT_PUZZLE, path=None):
                     outfile.write("Total number of removed nodes: "
                                   + str(num_of_removed_node) + "\n")
         
-test_puzzles = [EightPuzzle((7,3,4,1,0,8,2,6,5)),
-                EightPuzzle((4,6,7,5,0,2,3,1,8)),
-                EightPuzzle((6,2,5,3,4,1,0,8,7)),
-                EightPuzzle((0,2,5,8,7,3,1,4,6)),
-                EightPuzzle((1,7,8,3,2,4,6,0,5)),
-                EightPuzzle((4,0,7,2,1,8,6,3,5)),
-                EightPuzzle((4,1,7,3,5,2,8,0,6)),
-                EightPuzzle((7,1,2,0,4,6,5,3,8)),
-                EightPuzzle((1,3,4,6,2,5,0,7,8)),
-                EightPuzzle((7,5,0,6,2,1,4,3,8))]
+#test_8puzzles = [EightPuzzle((7,3,4,1,0,8,2,6,5)),
+#                EightPuzzle((4,6,7,5,0,2,3,1,8)),
+#                EightPuzzle((6,2,5,3,4,1,0,8,7)),
+#                EightPuzzle((0,2,5,8,7,3,1,4,6)),
+#                EightPuzzle((1,7,8,3,2,4,6,0,5)),
+#                EightPuzzle((4,0,7,2,1,8,6,3,5)),
+#                EightPuzzle((4,1,7,3,5,2,8,0,6)),
+#                EightPuzzle((7,1,2,0,4,6,5,3,8)),
+#                EightPuzzle((1,3,4,6,2,5,0,7,8)),
+#                EightPuzzle((7,5,0,6,2,1,4,3,8))]
 
 def puzzle_benchmark(kind):
     """Calculate benchmarks for solving puzzles"""
     puzzles = generate_puzzles(TOTAL_PUZZLES, kind=kind)
-    #puzzles = test_puzzles
     compare_search_algorithms(puzzles, kind=kind)
 
     
