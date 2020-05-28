@@ -31,15 +31,25 @@ class DuckPuzzle(Problem):
             possible_actions.remove('DOWN')
             
         return possible_actions
-
+    
+    def random_moves(self, state, moves=500):
+        res = state
+        for i in range(moves):
+            child_states = res.expand(self)
+            index = random.randint(0,len(child_states)-1)
+            res = child_states[index]
+        return res
+    
     def result(self, state, action):
         # blank is the index of the blank square
         blank = self.find_blank_square(state)
         new_state = list(state)
         
         delta = {'UP': -3, 'DOWN': 3, 'LEFT': -1, 'RIGHT': 1}
-        if blank <= 3:
+        if blank < 3:
             delta = {'UP': -2, 'DOWN': 2, 'LEFT': -1, 'RIGHT': 1}
+        elif blank == 3:
+            delta = {'UP': -2, 'DOWN': 3, 'LEFT': -1, 'RIGHT': 1}
         neighbor = blank + delta[action]
         new_state[blank], new_state[neighbor] = new_state[neighbor], new_state[blank]
 
@@ -70,14 +80,9 @@ class DuckPuzzle(Problem):
             """
             one_square = state.index(1)
             nums = list(filter(lambda x: x not in [1,2,3], state[:4]))
-            remaining_num = 0 # the remaining number in 4 numbers that is not 1, 2 or 3
             if len(nums) > 1:
                 return False
-            else:
-                remaining_num = nums[0]
-                if remaining_num != 0 and state[:3] != (1,2,3):
-                    return False
-            
+
             clockwise_order = []
             next = one_square
             step = 0
@@ -93,7 +98,25 @@ class DuckPuzzle(Problem):
                 elif next == 3:
                     next -= 1
                 step += 1
-            return clockwise_order == [1,2,3]
+            if clockwise_order == [1,2,3]:
+                remaining_num = nums[0]
+                """In case there is a remaining number that is not 0, 1, 2 or 3
+                   this number must sit at the bottom right corner of 2x2 puzzle 
+                   For example:
+                   3 1
+                   2 8 5 4
+                     0 7 6 
+                   is solvable because 8 is sitting at the bottom right corner
+                   1 2
+                   8 3 5 4
+                     0 7 6
+                   is not solvable because we can't move 8 out of 2x2 puzzle
+                """
+                if remaining_num != 0:
+                    return state.index(remaining_num) == 3
+                return True
+            else:
+                return False
         
         is_2x2_puzzle_solvable = check_2x2_puzzle()
         if not is_2x2_puzzle_solvable:
@@ -118,33 +141,30 @@ class DuckPuzzle(Problem):
         """ Return the heuristic value for a given state. Default heuristic function used is 
         h(n) = number of misplaced tiles """
         return sum(s != g for (s, g) in zip(node.state, self.goal))
-        
 
-def make_rand_puzzle(kind=EIGHT_PUZZLE):
+
+def make_rand_8puzzle():
     state  = (0,1,2,3,4,5,6,7,8)
     list_state = list(state) # random.shuffle needs list
-    tmp = EightPuzzle(state) # to use check_solvability
-    if kind == DUCK_PUZZLE:
-        tmp = DuckPuzzle(state)
+    dummy = EightPuzzle(state) # to use check_solvability
     while True:
         random.shuffle(list_state)
-        if (tmp.check_solvability(list_state)):
-            if kind == EIGHT_PUZZLE:
-                return EightPuzzle(tuple(list_state))
-            if kind == DUCK_PUZZLE:
-                return DuckPuzzle(tuple(list_state))
+        if (dummy.check_solvability(list_state)):
+            return EightPuzzle(tuple(list_state))
+        
+def make_rand_duckpuzzle():
+    """Return a random duckpuzzle"""
+    dummy = DuckPuzzle(())
+    rand_node = dummy.random_moves(Node((1,2,3,4,5,6,7,8,0)))
+    return DuckPuzzle(rand_node.state)
             
 def generate_puzzles(n, kind=EIGHT_PUZZLE):
     """Generate n number of puzzles"""
-    return [make_rand_puzzle(kind) for _ in range(n)]
+    if kind == DUCK_PUZZLE:
+        return [make_rand_duckpuzzle() for _ in range(n)]
+    return [make_rand_8puzzle() for _ in range(n)]
             
-def make_rand_8puzzle():
-    """Return a random 8puzzle"""
-    return make_rand_puzzle(EIGHT_PUZZLE)
 
-def make_rand_duckpuzzle():
-    """Return a random duckpuzzle"""
-    return make_rand_puzzle(DUCK_PUZZLE)
 
 def display(state, kind=EIGHT_PUZZLE):
     """Display 8puzzle(default) and duckpuzzle state based on passed value of "kind" parameter"""
@@ -164,7 +184,7 @@ def display(state, kind=EIGHT_PUZZLE):
                 print(state[i*3+j], end='')
             print()
             
-def get_state_string(state, kind="EightPuzzle"):
+def get_state_string(state, kind=EIGHT_PUZZLE):
     """Return string representation for a given state"""
     state_string = ""
     if kind == EIGHT_PUZZLE:
@@ -212,21 +232,45 @@ def best_first_graph_search_custom(problem, f):
                 if f(child) < frontier[child]:
                     del frontier[child]
                     frontier.append(child)
+                                                       
     elapsed_time = time.time() - start_time
     return None, num_of_removed_node, elapsed_time 
 
+def manhattan_duckpuzzle(node):
+    res = 0
+    # Node state (2,3,1,8,4,7,5,0,6)
+    # 2 3
+    # 1 8 4 7
+    #   5 0 6
 
-def manhattan_heuristic(node):
+    # tmp_state: (2,3,0,0,1,8,4,7,0,5,0,6)
+    # 2 3 0 0
+    # 1 8 4 7
+    # 0 5 0 6
+    tmp_state = list(node.state)
+    tmp_state.insert(2,0)
+    tmp_state.insert(3,0)
+    tmp_state.insert(8,0)
+    coord_map = {1:(0,0),2:(0,1),3:(1,0),4:(1,1),5:(1,2),6:(1,3),7:(2,1),8:(2,2)}
+    for i in range(12):
+        if tmp_state[i] != 0:
+            res += abs(i % 4 - coord_map[tmp_state[i]][1]) + abs(i // 4 - coord_map[tmp_state[i]][0])
+    return res
+
+def manhattan_8puzzle(node):
     res = 0
     for i in range(9):
         if node.state[i] != 0:
             res += abs(i % 3 - (node.state[i]-1)%3) + abs(i // 3 - (node.state[i]-1)//3)
     return res
 
-def max_of_manhattan_and_misplaced(problem):
+def max_of_manhattan_and_misplaced(problem,kind=EIGHT_PUZZLE):
     def h(state):
-        return max(manhattan_heuristic(state), problem.h(state))
+        if kind == DUCK_PUZZLE:
+            return max(manhattan_duckpuzzle(state), problem.h(state))
+        return max(manhattan_8puzzle(state), problem.h(state))
     return h
+
 
 # This is a modified version of astar_search provided in search.py
 # This version is used to compute some benchmarks
@@ -234,14 +278,16 @@ def my_astar_search(problem, h=None):
     h = memoize(h or problem.h, 'h')
     return  best_first_graph_search_custom(problem, lambda n: n.path_cost + h(n))
 
-def astar_search_using_misplaced(problem):
+def astar_search_using_misplaced(problem, kind=None):
     return my_astar_search(problem)
 
-def astar_search_using_manhattan(problem):
-    return my_astar_search(problem, manhattan_heuristic)
+def astar_search_using_manhattan(problem, kind=EIGHT_PUZZLE):
+    if kind == DUCK_PUZZLE:
+        return my_astar_search(problem, manhattan_duckpuzzle)
+    return my_astar_search(problem, manhattan_8puzzle)
 
-def astar_search_using_max_of_manhattan_and_misplaced(problem):
-    return my_astar_search(problem, max_of_manhattan_and_misplaced(problem))
+def astar_search_using_max_of_manhattan_and_misplaced(problem, kind=EIGHT_PUZZLE):
+    return my_astar_search(problem, max_of_manhattan_and_misplaced(problem,kind))
 
 
 def compare_search_algorithms(puzzles, kind=EIGHT_PUZZLE, path=None):
@@ -250,18 +296,17 @@ def compare_search_algorithms(puzzles, kind=EIGHT_PUZZLE, path=None):
                  {"func": astar_search_using_manhattan,
                   "name": "astar search using manhattan heuristic"},
                  {"func": astar_search_using_max_of_manhattan_and_misplaced,
-                  "name": "astar search using max of manhattan and misplaced"}]
+                 "name": "astar search using max of manhattan and misplaced"}]
     file_path = path or kind+"_benchmarks.txt"
     with open(file_path, 'w') as outfile:
         for puzzle in puzzles:
             outfile.write("\n==========================================\n")
             outfile.write("Puzzle:\n")
-            #display(puzzle.initial, kind)
             outfile.write(get_state_string(puzzle.initial, kind))
             for searcher in searchers:
                 outfile.write("\n--------------------------------------\n")
                 outfile.write(searcher["name"].upper() + "\n")
-                goal_state, num_of_removed_node,elapsed_time = searcher["func"](puzzle)
+                goal_state, num_of_removed_node,elapsed_time = searcher["func"](puzzle,kind)
                 if goal_state:
                     outfile.write("Running time (in seconds): "
                                   + str(elapsed_time) + "\n")
@@ -269,17 +314,6 @@ def compare_search_algorithms(puzzles, kind=EIGHT_PUZZLE, path=None):
                                   + str(goal_state.depth) + "\n")
                     outfile.write("Total number of removed nodes: "
                                   + str(num_of_removed_node) + "\n")
-        
-#test_8puzzles = [EightPuzzle((7,3,4,1,0,8,2,6,5)),
-#                EightPuzzle((4,6,7,5,0,2,3,1,8)),
-#                EightPuzzle((6,2,5,3,4,1,0,8,7)),
-#                EightPuzzle((0,2,5,8,7,3,1,4,6)),
-#                EightPuzzle((1,7,8,3,2,4,6,0,5)),
-#                EightPuzzle((4,0,7,2,1,8,6,3,5)),
-#                EightPuzzle((4,1,7,3,5,2,8,0,6)),
-#                EightPuzzle((7,1,2,0,4,6,5,3,8)),
-#                EightPuzzle((1,3,4,6,2,5,0,7,8)),
-#                EightPuzzle((7,5,0,6,2,1,4,3,8))]
 
 def puzzle_benchmark(kind):
     """Calculate benchmarks for solving puzzles"""
