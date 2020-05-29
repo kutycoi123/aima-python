@@ -332,20 +332,10 @@ def compare_search_algorithms(puzzles, kind=EIGHT_PUZZLE, path=None):
 def puzzle_benchmark(kind):
     """Calculate benchmarks for solving puzzles"""
     puzzles = generate_puzzles(TOTAL_PUZZLES, kind=kind)
-    #puzzles = [EightPuzzle((7,3,4,1,0,8,2,6,5)),
-    #           EightPuzzle((4,6,7,5,0,2,3,1,8)),
-    #           EightPuzzle((6,2,5,3,4,1,0,8,7)),
-    #           EightPuzzle((0,2,5,8,7,3,1,4,6)),
-    #           EightPuzzle((1,7,8,3,2,4,6,0,5)),
-    #           EightPuzzle((4,0,7,2,1,8,6,3,5)),
-    #           EightPuzzle((4,1,7,3,5,2,8,0,6)),
-    #           EightPuzzle((7,1,2,0,4,6,5,3,8)),
-    #           EightPuzzle((1,3,4,6,2,5,0,7,8)),
-    #           EightPuzzle((7,5,0,6,2,1,4,3,8))]
     compare_search_algorithms(puzzles, kind=kind)
 
     
 if __name__ == "__main__":
     pass
-    puzzle_benchmark(EIGHT_PUZZLE)
-    #puzzle_benchmark(DUCK_PUZZLE)
+    #puzzle_benchmark(EIGHT_PUZZLE)
+    puzzle_benchmark(DUCK_PUZZLE)
