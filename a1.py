@@ -140,7 +140,10 @@ class DuckPuzzle(Problem):
     def h(self, node):
         """ Return the heuristic value for a given state. Default heuristic function used is 
         h(n) = number of misplaced tiles """
-        return sum(s != g for (s, g) in zip(node.state, self.goal))
+        misplaced = sum(s != g  for (s, g) in zip(node.state, self.goal))
+        if node.state.index(0) != self.goal.index(0):
+            return misplaced - 1
+        return misplaced
 
 
 def make_rand_8puzzle():
@@ -234,7 +237,16 @@ def best_first_graph_search_custom(problem, f):
                     frontier.append(child)
                                                        
     elapsed_time = time.time() - start_time
-    return None, num_of_removed_node, elapsed_time 
+    return None, num_of_removed_node, elapsed_time
+
+def misplaced(problem):
+    def h(node):
+        """Compute misplaced heuristic excluding empty tile"""
+        misplaced_num = sum(s != g for (s,g) in zip(node.state, problem.goal))
+        if node.state.index(0) != problem.goal.index(0):
+            return misplaced_num - 1
+        return misplaced_num
+    return h
 
 def manhattan_duckpuzzle(node):
     res = 0
@@ -257,6 +269,7 @@ def manhattan_duckpuzzle(node):
             res += abs(i % 4 - coord_map[tmp_state[i]][1]) + abs(i // 4 - coord_map[tmp_state[i]][0])
     return res
 
+
 def manhattan_8puzzle(node):
     res = 0
     for i in range(9):
@@ -268,7 +281,7 @@ def max_of_manhattan_and_misplaced(problem,kind=EIGHT_PUZZLE):
     def h(state):
         if kind == DUCK_PUZZLE:
             return max(manhattan_duckpuzzle(state), problem.h(state))
-        return max(manhattan_8puzzle(state), problem.h(state))
+        return max(manhattan_8puzzle(state), misplaced(problem)(state))
     return h
 
 
@@ -279,7 +292,8 @@ def my_astar_search(problem, h=None):
     return  best_first_graph_search_custom(problem, lambda n: n.path_cost + h(n))
 
 def astar_search_using_misplaced(problem, kind=None):
-    return my_astar_search(problem)
+    h = misplaced(problem)
+    return my_astar_search(problem, h)
 
 def astar_search_using_manhattan(problem, kind=EIGHT_PUZZLE):
     if kind == DUCK_PUZZLE:
@@ -318,6 +332,16 @@ def compare_search_algorithms(puzzles, kind=EIGHT_PUZZLE, path=None):
 def puzzle_benchmark(kind):
     """Calculate benchmarks for solving puzzles"""
     puzzles = generate_puzzles(TOTAL_PUZZLES, kind=kind)
+    #puzzles = [EightPuzzle((7,3,4,1,0,8,2,6,5)),
+    #           EightPuzzle((4,6,7,5,0,2,3,1,8)),
+    #           EightPuzzle((6,2,5,3,4,1,0,8,7)),
+    #           EightPuzzle((0,2,5,8,7,3,1,4,6)),
+    #           EightPuzzle((1,7,8,3,2,4,6,0,5)),
+    #           EightPuzzle((4,0,7,2,1,8,6,3,5)),
+    #           EightPuzzle((4,1,7,3,5,2,8,0,6)),
+    #           EightPuzzle((7,1,2,0,4,6,5,3,8)),
+    #           EightPuzzle((1,3,4,6,2,5,0,7,8)),
+    #           EightPuzzle((7,5,0,6,2,1,4,3,8))]
     compare_search_algorithms(puzzles, kind=kind)
 
     
