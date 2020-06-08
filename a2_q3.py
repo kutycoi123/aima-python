@@ -5,6 +5,22 @@ import csp as CSP
 from utils import *
 N = 31
 
+class IceBreakerSolution:
+    def __init__(self, csp, solution, runtime, nAssigned):
+        self.csp = csp
+        self.runtime = runtime
+        self.solution = solution
+        self.nAssigned = nAssigned
+    def getNumOfTeams(self):
+        return len(set(self.solution.values()))
+    def output(path):
+        with open(path, 'a+') as outfile:
+            outfile.write("\n===============================")
+            outfile.write("Graph: " + str(self.csp.neighbors)+"\n")
+            outfile.write("Solution: " + str(self.solution)+"\n")
+            outfile.write("Runtime: " + str(self.runtime)+"\n")
+            outfile.write("Number of times CSP variables were assigned and unassigned:" + str(self.nAssigned)+"\n")
+        
 # CSP Backtracking Search
 
 # Variable ordering
@@ -61,16 +77,13 @@ def forward_checking(csp, var, value, assignment, removals):
     return True
 
 
-#def mac(csp, var, value, assignment, removals, constraint_propagation=AC3b):
-#    """Maintain arc consistency."""
-#    return constraint_propagation(csp, {(X, var) for X in csp.neighbors[var]}, removals)
+def mac(csp, var, value, assignment, removals, constraint_propagation=CSP.AC3b):
+    """Maintain arc consistency."""
+    return constraint_propagation(csp, {(X, var) for X in csp.neighbors[var]}, removals)[0]
 
 
 # The search, proper
 
-
-def my_inference(csp, var, value, assignment, removals):
-    return CSP.AC3(csp, removals=removals)[0]
 
 def my_backtracking_search(csp, select_unassigned_variable=first_unassigned_variable,
                         order_domain_values=unordered_domain_values, inference=no_inference):
@@ -86,7 +99,7 @@ def my_backtracking_search(csp, select_unassigned_variable=first_unassigned_vari
                 removals = csp.suppose(var, value)
                 if inference(csp, var, value, assignment, removals):
                     result = backtrack(assignment)
-                    if result is not None and csp.goal_test(result):
+                    if result is not None:
                         return result
                 csp.restore(removals)
         csp.unassign(var, assignment)
@@ -94,8 +107,6 @@ def my_backtracking_search(csp, select_unassigned_variable=first_unassigned_vari
 
     result = backtrack({})
     #assert result is None or csp.goal_test(result)
-    #print(result)
-    #print(csp.goal_test(result))
     return result
 
 
@@ -103,14 +114,23 @@ def my_backtracking_search(csp, select_unassigned_variable=first_unassigned_vari
 if __name__ == "__main__":
     graphs = [rand_graph(0.1, N), rand_graph(0.2, N), rand_graph(0.3, N),
               rand_graph(0.4, N), rand_graph(0.5, N), rand_graph(0.6, N)]
-    #print(graphs[0])
-    test_graph = CSP.MapColoringCSP(range(31), graphs[5])
-    #test_graph = csp.MapColoringCSP([0,1,2], {0: [1, 2], 1: [0], 2: [0], 3: []})
-    res = my_backtracking_search(test_graph, inference=my_inference)
-    #res = csp.min_conflicts(test_graph)
-    if res:
-        print(check_teams(graphs[5], res))
+    test_graph = graphs[5]
+    start = time.time()
+    for colors in range(1,N):
+        csp = CSP.MapColoringCSP(list(range(colors)), test_graph)
+        res = my_backtracking_search(csp, select_unassigned_variable=mrv, order_domain_values=lcv, inference=forward_checking)
+        #res = CSP.min_conflicts(csp, max_steps=100000)
         print(res)
-    else:
-        print("No solution")
+        if res:
+            end = time.time()
+            print(check_teams(csp.neighbors, res))
+            print("Solution:", res)
+            print("Graph:", test_graph)
+            tmp = IceBreakerSolution(csp, res, end-start, csp.nassigns)
+            print("Colors:", colors)
+            print("Num of teams:", tmp.getNumOfTeams())
+            break
+   
+    print("Time elapsed:", end - start)
+    
 
