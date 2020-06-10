@@ -18,9 +18,9 @@ class MY_CSP(CSP):
             self.nUnassigns += 1
     def prune(self, var, value, removals): #override method
         self.curr_domains[var].remove(value)
+        self.nPrunes += 1
         if removals is not None:
             removals.append((var, value))
-            self.nPrunes += 1
             
 def MapColoringCSP(colors, neighbors):
     if isinstance(neighbors, str):
@@ -58,11 +58,11 @@ def run_q3():
             res = backtracking_search(csp, select_unassigned_variable=mrv, order_domain_values=lcv, inference=forward_checking)
             if res:
                 end = time.time()
-                print(check_teams(csp.neighbors, res))
-                print("Solution:", res)
-                print("Graph:", graph)
                 tmp = IceBreakerSolution(csp, res, end-start)
-                tmp.output("csp_3.txt")
+                tmp.output("csp_5.txt")
+                print(check_teams(csp.neighbors, res))
+                print("Graph:", graph)
+                print("Solution:", res)
                 print("Colors:", colors)
                 print("Num of teams:", tmp.getNumOfTeams())
                 print("Num of assigns:", csp.nassigns)
