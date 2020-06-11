@@ -50,9 +50,10 @@ def min_conflicts_value(csp, var, current):
     return argmin_random_tie(csp.domains[var], key=lambda val: csp.nconflicts(var, val, current))
 
 class IceBreakerSolution:
-    def __init__(self, csp, solution, runtime, steps):
+    def __init__(self, csp, solution, algorithm_runtime, solution_runtime, steps):
         self.csp = csp
-        self.runtime = runtime
+        self.algorithm_runtime = algorithm_runtime
+        self.solution_runtime = solution_runtime
         self.solution = solution
         self.steps = steps
     def getNumOfTeams(self):
@@ -66,19 +67,20 @@ class IceBreakerSolution:
             outfile.write("Number of times CSP variables were assigned: " + str(self.csp.nassigns)+"\n")
             outfile.write("Number of times CSP variables were unassigned: " + str(self.csp.nUnassigns)+"\n")
             outfile.write("Number of steps for min_conflicts to find a solution: " + str(self.steps)+"\n")
-            outfile.write("Runtime: " + str(self.runtime)+"\n")
+            outfile.write("Solution Runtime: " + str(self.solution_runtime)+"\n")
+            outfile.write("Entire algorithm Runtime: " + str(self.algorithm_runtime) + "\n")
 
 
 
 def solve(graph):
-    start = time.time()
+    algo_start = time.time()
     for colors in range(1,N+1):
+        sol_start = time.time()
         csp = MapColoringCSP(list(range(colors)), graph)
-        print(colors)
         sol,steps = min_conflicts(csp,10000)
         if sol and csp.goal_test(sol):
-            end = time.time()
-            tmp = IceBreakerSolution(csp, sol, end-start, steps)
+            sol_end = time.time()
+            tmp = IceBreakerSolution(csp, sol, sol_end-algo_start, sol_end-sol_start, steps)
             return tmp
     return None
 
@@ -89,7 +91,7 @@ def run_q4():
     for graph in graphs:
         res = solve(graph)
         if res:
-            res.output('csp_min_1.txt')
+            res.output('csp_min_3.txt')
             print('Graph:', graph)
             print('Solution:', res.solution)
             print('Number of teams:', res.getNumOfTeams())

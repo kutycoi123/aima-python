@@ -28,9 +28,10 @@ def MapColoringCSP(colors, neighbors):
     return MY_CSP(list(neighbors.keys()), UniversalDict(colors), neighbors, different_values_constraint)
 
 class IceBreakerSolution:
-    def __init__(self, csp, solution, runtime):
+    def __init__(self, csp, solution, algorithm_runtime, solution_runtime):
         self.csp = csp
-        self.runtime = runtime
+        self.algorithm_runtime = algorithm_runtime
+        self.solution_runtime = solution_runtime
         self.solution = solution
     def getNumOfTeams(self):
         return len(set(self.solution.values()))
@@ -40,10 +41,11 @@ class IceBreakerSolution:
             outfile.write("Graph: " + str(self.csp.neighbors)+"\n")
             outfile.write("Solution: " + str(self.solution)+"\n")
             outfile.write("Number of teams: " + str(self.getNumOfTeams()) + "\n")
-            outfile.write("Runtime: " + str(self.runtime)+"\n")
             outfile.write("Number of times CSP variables were assigned: " + str(self.csp.nassigns)+"\n")
             outfile.write("Number of times CSP variables were unassigned: " + str(self.csp.nUnassigns)+"\n")
-            outfile.write("Number of prune: " + str(self.csp.nPrunes))
+            outfile.write("Number of prune: " + str(self.csp.nPrunes)+"\n")
+            outfile.write("Solution Runtime: " + str(self.solution_runtime)+"\n")
+            outfile.write("Algorithm runtime: " + str(self.algorithm_runtime)+"\n")
             
 
 def run_q3():
@@ -52,13 +54,14 @@ def run_q3():
 
     total_start = time.time()
     for graph in graphs:
-        start = time.time()
+        algo_start = time.time()
         for colors in range(1,N+1):
+            sol_start = time.time()
             csp = MapColoringCSP(list(range(colors)), graph)
             res = backtracking_search(csp, select_unassigned_variable=mrv, order_domain_values=lcv, inference=forward_checking)
             if res:
                 end = time.time()
-                tmp = IceBreakerSolution(csp, res, end-start)
+                tmp = IceBreakerSolution(csp, res, end-algo_start, end-sol_start)
                 tmp.output("csp_5.txt")
                 print(check_teams(csp.neighbors, res))
                 print("Graph:", graph)
@@ -68,7 +71,7 @@ def run_q3():
                 print("Num of assigns:", csp.nassigns)
                 print("Num of unassings:", csp.nUnassigns)
                 print("Num of prunes:", csp.nPrunes)
-                print("Runtime:", end - start)
+                print("Runtime:", end - sol_start)
                 break
     print("Total runtime for 6 graphs:", time.time() - total_start)
     
