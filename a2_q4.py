@@ -8,7 +8,7 @@ from utils import argmin_random_tie
 
 
 N = 105
-
+STEPS = 10000
 class MY_CSP(CSP):
 
     def __init__(self, variables, domains, neighbors, constraints):
@@ -67,17 +67,15 @@ class IceBreakerSolution:
             outfile.write("Number of times CSP variables were assigned: " + str(self.csp.nassigns)+"\n")
             outfile.write("Number of times CSP variables were unassigned: " + str(self.csp.nUnassigns)+"\n")
             outfile.write("Number of steps for min_conflicts to find a solution: " + str(self.steps)+"\n")
-            outfile.write("Solution Runtime: " + str(self.solution_runtime)+"\n")
-            outfile.write("Entire algorithm Runtime: " + str(self.algorithm_runtime) + "\n")
-
-
+            outfile.write("Runtime for only solvable graph: " + str(self.solution_runtime)+"\n")
+            outfile.write("Runtime for entire algorithm: " + str(self.algorithm_runtime) + "\n")
 
 def solve(graph):
     algo_start = time.time()
     for colors in range(1,N+1):
         sol_start = time.time()
         csp = MapColoringCSP(list(range(colors)), graph)
-        sol,steps = min_conflicts(csp,10000)
+        sol,steps = min_conflicts(csp,STEPS)
         if sol and csp.goal_test(sol):
             sol_end = time.time()
             tmp = IceBreakerSolution(csp, sol, sol_end-algo_start, sol_end-sol_start, steps)
@@ -91,13 +89,16 @@ def run_q4():
     for graph in graphs:
         res = solve(graph)
         if res:
-            res.output('csp_min_3.txt')
+            # Uncomment below code to write result to file
+            #res.output('out.txt')
             print('Graph:', graph)
             print('Solution:', res.solution)
             print('Number of teams:', res.getNumOfTeams())
             print('Number of assigns:', res.csp.nassigns)
             print('Number of unassigns:', res.csp.nUnassigns)
             print('Number of steps:', res.steps)
+            print('Runtime for only solvable graph:',res.solution_runtime)
+            print('Runtime for entire algorithm:',res.algorithm_runtime)
     print('Total running time:', time.time() - total_start)
 
 
