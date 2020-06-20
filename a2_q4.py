@@ -83,23 +83,22 @@ def solve(graph):
     return None
 
 def run_q4():
-    graphs = [rand_graph(0.1, N), rand_graph(0.2, N), rand_graph(0.3, N),
-              rand_graph(0.4, N), rand_graph(0.5, N), rand_graph(0.6, N)]
-    total_start = time.time()
-    for graph in graphs:
-        res = solve(graph)
-        if res:
-            # Uncomment below code to write result to file
-            #res.output('out.txt')
-            print('Graph:', graph)
-            print('Solution:', res.solution)
-            print('Number of teams:', res.getNumOfTeams())
-            print('Number of assigns:', res.csp.nassigns)
-            print('Number of unassigns:', res.csp.nUnassigns)
-            print('Number of steps:', res.steps)
-            print('Runtime for only solvable graph:',res.solution_runtime)
-            print('Runtime for entire algorithm:',res.algorithm_runtime)
-    print('Total running time:', time.time() - total_start)
+    for _ in range(5):
+        graphs = [rand_graph(0.1, N), rand_graph(0.2, N), rand_graph(0.3, N),
+                  rand_graph(0.4, N), rand_graph(0.5, N), rand_graph(0.6, N)]
+        for graph in graphs:
+            res = solve(graph)
+            if res:
+                # Uncomment line below to write result to file
+                #res.output('out.txt')
+                print('Graph:', graph)
+                print('Solution:', res.solution)
+                print('Number of teams:', res.getNumOfTeams())
+                print('Number of assigns:', res.csp.nassigns)
+                print('Number of unassigns:', res.csp.nUnassigns)
+                print('Number of steps:', res.steps)
+                print('Runtime for only solvable graph:',res.solution_runtime)
+                print('Runtime for entire algorithm:',res.algorithm_runtime)
 
 
 if __name__ == '__main__':

@@ -3,6 +3,7 @@ from a2_q2 import check_teams
 import time
 from csp import CSP, parse_neighbors, forward_checking, mrv, lcv, backtracking_search, UniversalDict, different_values_constraint
 
+# Number of nodes (or people)
 N = 31
 
 class MY_CSP(CSP):
@@ -27,6 +28,7 @@ def MapColoringCSP(colors, neighbors):
     return MY_CSP(list(neighbors.keys()), UniversalDict(colors), neighbors, different_values_constraint)
 
 class IceBreakerSolution:
+    """Just a utility class to save the result"""
     def __init__(self, csp, solution, algorithm_runtime, solution_runtime):
         self.csp = csp
         self.algorithm_runtime = algorithm_runtime
@@ -49,31 +51,32 @@ class IceBreakerSolution:
             
 
 def run_q3():
-    graphs = [rand_graph(0.1, N), rand_graph(0.2, N), rand_graph(0.3, N),
-              rand_graph(0.4, N), rand_graph(0.5, N), rand_graph(0.6, N)]
-    total_start = time.time()
-    for graph in graphs:
-        algo_start = time.time()
-        for colors in range(1,N+1):
-            sol_start = time.time()
-            csp = MapColoringCSP(list(range(colors)), graph)
-            res = backtracking_search(csp, select_unassigned_variable=mrv, inference=forward_checking)
-            if res:
-                end = time.time()
-                tmp = IceBreakerSolution(csp, res, end-algo_start, end-sol_start)
-                # Uncommend code below to write results to files
-                #tmp.output("out.txt") 
-                print(check_teams(csp.neighbors, res))
-                print("Graph:", graph)
-                print("Solution:", res)
-                print("Num of teams:", tmp.getNumOfTeams())
-                print("Num of assigns:", csp.nassigns)
-                print("Num of unassings:", csp.nUnassigns)
-                print("Num of prunes:", csp.nPrunes)
-                print("Runtime for only solvable graph:", tmp.solution_runtime)
-                print("Runtime for entire algorithm:",tmp.algorithm_runtime)
-                break
-    print("Total runtime for 6 graphs:", time.time() - total_start)
+    for _ in range(5):
+        graphs = [rand_graph(0.1, N), rand_graph(0.2, N), rand_graph(0.3, N),
+                  rand_graph(0.4, N), rand_graph(0.5, N), rand_graph(0.6, N)]
+        total_start = time.time()
+        for graph in graphs:
+            """Brute force every color until find a solution"""
+            algo_start = time.time()
+            for colors in range(1,N+1):
+                sol_start = time.time()
+                csp = MapColoringCSP(list(range(colors)), graph)
+                res = backtracking_search(csp, select_unassigned_variable=mrv, inference=forward_checking)
+                if res:
+                    end = time.time()
+                    tmp = IceBreakerSolution(csp, res, end-algo_start, end-sol_start)
+                    # Uncommend line below to write results to files
+                    #tmp.output("out.txt") 
+                    print(check_teams(csp.neighbors, res))
+                    print("Graph:", graph)
+                    print("Solution:", res)
+                    print("Num of teams:", tmp.getNumOfTeams())
+                    print("Num of assigns:", csp.nassigns)
+                    print("Num of unassings:", csp.nUnassigns)
+                    print("Num of prunes:", csp.nPrunes)
+                    print("Runtime for only solvable graph:", tmp.solution_runtime)
+                    print("Runtime for entire algorithm:",tmp.algorithm_runtime)
+                    break
     
             
 if __name__ == "__main__":
