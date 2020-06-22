@@ -2,12 +2,13 @@ import sys
 
 class TicTacToe:
     def __init__(self, player1, player2):
-        self.board = [[-1,-1,-1]] * 3
+        self.board = [["*","*","*"], ["*","*","*"], ["*","*","*"]]
         self.size = 3
         self.ply1 = player1
         self.ply2 = player2
         self.nPossibleMoves = 9
         self.adjMoveToWin = 3 # adjacent move to win
+        self.winner = None
 
     def updateBoard(self, player, move):
         i, j = move
@@ -17,7 +18,7 @@ class TicTacToe:
         moves = []
         for i in range(self.size):
             for j in range(self.size):
-                if self.board[i][j] == -1: # Might want to remove this hard-code
+                if self.board[i][j] == '*': # Might want to remove this hard-code
                     moves.append((i, j))
         return moves
 
@@ -30,11 +31,11 @@ class TicTacToe:
         up, down = (j, j + 1)
         while up >= 0 or down < self.size:
             brk = True
-            if up >= 0 and self.board[i][up] == player.symbol:
+            if up >= 0 and self.board[up][j] == player.symbol:
                 cnt += 1
                 up -= 1
                 brk = False
-            if down < self.size and self.board[i][down] == player.symnbol:
+            if down < self.size and self.board[down][j] == player.symbol:
                 cnt += 1
                 down += 1
                 brk = False
@@ -47,11 +48,11 @@ class TicTacToe:
         left, right = (i, i + 1)
         while left >= 0 or right < self.size:
             brk = True
-            if left >= 0 and self.board[left][j] == player.symbol:
+            if left >= 0 and self.board[i][left] == player.symbol:
                 cnt += 1
                 left -= 1
                 brk = False
-            if right < self.size and self.board[right][j] == player.symbol:
+            if right < self.size and self.board[i][right] == player.symbol:
                 cnt += 1
                 right += 1
                 brk = False
@@ -63,7 +64,7 @@ class TicTacToe:
         # Check left diagonal
         cnt = 0
         leftUpRow, leftUpCol = (i, j)
-        rightDownCol, rightDownCol= (i+1, j+1)
+        rightDownRow, rightDownCol= (i+1, j+1)
         while (leftUpRow >= 0 and leftUpCol >= 0) or (rightDownRow < self.size and rightDownCol < self.size):
             brk = True
             if leftUpRow >= 0 and leftUpCol >= 0 and self.board[leftUpRow][leftUpCol] == player.symbol:
@@ -84,10 +85,10 @@ class TicTacToe:
         # Check right diagonal
         cnt = 0
         leftDownRow, leftDownCol = (i, j)
-        rightUpCol, rightUpCol= (i-1, j+1)
+        rightUpRow, rightUpCol= (i-1, j+1)
         while (leftDownRow < self.size and leftDownCol >= 0 ) or (rightUpRow >= 0 and rightUpCol < self.size):
             brk = True
-            if leftDownRow >= 0 and leftDownCol >= 0 and self.board[leftDownRow][leftDownCol] == player.symbol:
+            if leftDownRow < self.size and leftDownCol >= 0 and self.board[leftDownRow][leftDownCol] == player.symbol:
                 cnt += 1
                 leftDownRow += 1
                 leftDownCol -= 1
@@ -106,12 +107,7 @@ class TicTacToe:
     def printBoard(self):
         for i in range(self.size):
             for j in range(self.size):
-                if self.board[i][j] == -1:
-                    print('*', end=' ')
-                elif self.board[i][j] == ply1.symbol:
-                    print(ply1.symbol, end=' ')
-                else:
-                    print(ply2.symbol, end=' ')
+                print(self.board[i][j], end=' ')
             print()
         
         
@@ -122,31 +118,36 @@ class TicTacToe:
             if plyMove not in possibleMoves:
                 print("Invalid move. Please choose another move!!!")
                 continue
-            self.updateBoard(plyMove)
+            self.updateBoard(ply, plyMove)
             self.nPossibleMoves -= 1
             return plyMove 
         
     def run(self):
+        self.printBoard()
         while True:
-            self.printBoard()
-            print("Player ${name} turn".format(ply1.name))
-            ply1Move = self.playerMove(ply1)
-            ply2.acknowledge(ply1Move)
+            print("Player {name} turn".format(name = self.ply1.name))
+            ply1Move = self.playerMove(self.ply1)
             self.printBoard()
             isOver = self.nPossibleMoves == 0
-            if self.isWinner(ply1Move, ply1):
-                self.winner = ply1
-            if isOver or self.winner:
+            if self.isWinner(ply1Move, self.ply1):
+                self.winner = self.ply1
+                isOver = True
+            if isOver:
                 break
-            print("Player ${name} turn".format(ply2.name))
-            ply2Move = self.playerMove(ply2)
-            ply1.acknowledge(ply2Move)
-            if self.getWinner(ply2Move, ply2):
-                self.winner = ply2
+            self.ply2.acknowledge(ply1Move)
+            print("Player {name} turn".format(name = self.ply2.name))
+            ply2Move = self.playerMove(self.ply2)
+            self.printBoard()
+            if self.isWinner(ply2Move, self.ply2):
+                self.winner = self.ply2
+                isOver = True
+            if isOver:
+                break
+            self.ply1.acknowledge(ply2Move)
         if not self.winner:
             print("Draw!!!")
         else:
-            print("Player ${name} wins".format(self.winner.name))
+            print("Player {name} wins".format(name = self.winner.name))
 
 class TictactoePlayer:
     def __init__(self, name, symbol):
@@ -169,7 +170,7 @@ class HumanPlayer(TictactoePlayer):
 class AIPlayer(TictactoePlayer):
     def __init__(self, name, symbol):
         super().__init__(name, symbol)
-        self.board = [[-1,-1,-1]]] * 3
+        self.board = [[-1,-1,-1], [-1,-1,-1], [-1,-1,-1]]
     def nextMove(self, possibleMoves):
         pass
     def acknowledge(self, move):
@@ -179,7 +180,10 @@ class AIPlayer(TictactoePlayer):
     
 def play_a_new_game():
     #game = TicTacToe()
-    human = HumanPlayer("human", "X")
+    human1 = HumanPlayer("human1", "X")
+    human2 = HumanPlayer("human2", "O")
+    game = TicTacToe(human1, human2)
+    game.run()
     #pass
 
 if __name__ == "__main__":
