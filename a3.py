@@ -21,86 +21,32 @@ class TicTacToe:
                 if self.board[i][j] == '*': # Might want to remove this hard-code
                     moves.append((i, j))
         return moves
-
-    def isWinner(self, currentPos, player):
-        i, j = currentPos
-        if self.board[i][j] != player.symbol:
-            return False
-        # Check vertical
+    
+    def get(self, row, col):
+        if row >= 0 and row < self.size and col >= 0 and col < self.size:
+            return self.board[row][col]
+        return None
+    
+    def hasConsecutiveKMoves(self, k, startPos, delta, player):
+        row, col = startPos
+        deltaRow, deltaCol = delta
         cnt = 0
-        up, down = (j, j + 1)
-        while up >= 0 or down < self.size:
-            brk = True
-            if up >= 0 and self.board[up][j] == player.symbol:
-                cnt += 1
-                up -= 1
-                brk = False
-            if down < self.size and self.board[down][j] == player.symbol:
-                cnt += 1
-                down += 1
-                brk = False
-            if brk:
-                break
-        if cnt >= self.adjMoveToWin:
-            return True
-        # Check horizontal
-        cnt = 0
-        left, right = (i, i + 1)
-        while left >= 0 or right < self.size:
-            brk = True
-            if left >= 0 and self.board[i][left] == player.symbol:
-                cnt += 1
-                left -= 1
-                brk = False
-            if right < self.size and self.board[i][right] == player.symbol:
-                cnt += 1
-                right += 1
-                brk = False
-            if brk:
-                break
-        if cnt >= self.adjMoveToWin:
-            return True
-
-        # Check left diagonal
-        cnt = 0
-        leftUpRow, leftUpCol = (i, j)
-        rightDownRow, rightDownCol= (i+1, j+1)
-        while (leftUpRow >= 0 and leftUpCol >= 0) or (rightDownRow < self.size and rightDownCol < self.size):
-            brk = True
-            if leftUpRow >= 0 and leftUpCol >= 0 and self.board[leftUpRow][leftUpCol] == player.symbol:
-                cnt += 1
-                leftUpRow -= 1
-                leftUpCol -= 1
-                brk = False
-            if rightDownCol < self.size and rightDownRow < self.size and self.board[rightDownRow][rightDownCol] == player.symbol:
-                cnt += 1
-                rightDownRow += 1
-                rightDownCol += 1
-                brk = False
-            if brk:
-                break
-        if cnt >= self.adjMoveToWin:
-            return True
-        
-        # Check right diagonal
-        cnt = 0
-        leftDownRow, leftDownCol = (i, j)
-        rightUpRow, rightUpCol= (i-1, j+1)
-        while (leftDownRow < self.size and leftDownCol >= 0 ) or (rightUpRow >= 0 and rightUpCol < self.size):
-            brk = True
-            if leftDownRow < self.size and leftDownCol >= 0 and self.board[leftDownRow][leftDownCol] == player.symbol:
-                cnt += 1
-                leftDownRow += 1
-                leftDownCol -= 1
-                brk = False
-            if rightUpCol < self.size and rightUpRow >= 0 and self.board[rightUpRow][rightUpCol] == player.symbol:
-                cnt += 1
-                rightUpRow -= 1
-                rightUpCol += 1
-                brk = False
-            if brk:
-                break
-        if cnt >= self.adjMoveToWin:
+        while self.get(row, col) == player.symbol:
+            cnt += 1
+            row, col = row + deltaRow, col + deltaCol
+        row, col = startPos
+        while self.get(row, col) == player.symbol:
+            cnt += 1
+            row, col = row - deltaRow, col - deltaCol
+        cnt -= 1
+        return cnt >= k
+    
+    def isWinner(self, curPos, player):
+        k = self.adjMoveToWin
+        if (self.hasConsecutiveKMoves(k, curPos, (1,0), player) or
+            self.hasConsecutiveKMoves(k, curPos, (0,1), player) or
+            self.hasConsecutiveKMoves(k, curPos, (1,1), player) or
+            self.hasConsecutiveKMoves(k, curPos, (1,-1), player)):
             return True
         return False
 
@@ -109,7 +55,6 @@ class TicTacToe:
             for j in range(self.size):
                 print(self.board[i][j], end=' ')
             print()
-        
         
     def playerMove(self, ply):
         possibleMoves = self.getPossibleMoves()
