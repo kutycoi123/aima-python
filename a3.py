@@ -215,9 +215,7 @@ class AIPlayer(TictactoePlayer):
         def simulate(node):
             nextNode = node
             winner = None
-            while not isGameTerminated(nextNode.state):
-                children = expand(nextNode)
-                nextNode = random.choice(children)
+            while True:
                 winner = quickCheckWinner(nextNode.state, nextNode.move)
                 if winner != None:
                     queue = expand(nextNode)
@@ -235,6 +233,11 @@ class AIPlayer(TictactoePlayer):
                     elif winner == self.AI:
                         node.winOrDraw += tmp
                         break
+                if isGameTerminated(nextNode.state):
+                    break
+                children = expand(nextNode)
+                nextNode = random.choice(children)
+
             if winner == None:
                 node.winOrDraw += 1
 
@@ -259,23 +262,23 @@ class AIPlayer(TictactoePlayer):
         root.children = expand(root)
         for _ in range(N):
             child = select(root)
-            winner = quickCheckWinner(child.state, child.move)
-            if winner != None:
-                queue = expand(child)
-                tmp = 1
-                while queue != []:
-                    tmp += len(queue)
-                    newQueue = []
-                    for node in queue:
-                        newQueue += expand(node)
-                    queue = newQueue
-                    
-                if winner == self.human:
-                    child.lose += tmp
-                    continue
-                elif winner == self.AI:
-                    child.winOrDraw += tmp
-                    continue
+            #winner = quickCheckWinner(child.state, child.move)
+            #if winner != None:
+            #    queue = expand(child)
+            #    tmp = 1
+            #    while queue != []:
+            #        tmp += len(queue)
+            #        newQueue = []
+            #        for node in queue:
+            #            newQueue += expand(node)
+            #        queue = newQueue
+            #        
+            #    if winner == self.human:
+            #        child.lose += tmp
+            #        continue
+            #    elif winner == self.AI:
+            #        child.winOrDraw += tmp
+            #        continue
             simulate(child)
         minLose = min(root.children, key=heu2).lose
         for child in root.children:
