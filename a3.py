@@ -1,5 +1,5 @@
 import sys
-
+import random
 class TicTacToe:
     def __init__(self, player1, player2):
         self.board = [["*","*","*"], ["*","*","*"], ["*","*","*"]]
@@ -112,22 +112,184 @@ class HumanPlayer(TictactoePlayer):
         col = int(input("Choose a col: "))
         return (row, col)
 
+class MCNode:
+    """Monte carlo node"""
+    def __init__(self, move, parent, player, state=None):
+        self.move = move
+        self.parent = parent
+        self.state = state
+        self.player = player
+        if parent != None:
+            copyState = list(map(list, parent.state))
+            row, col = move
+            copyState[row][col] = player * -1
+            self.state = copyState
+        self.children = []
+        self.lose = 0
+        self.winOrDraw = 0
+        
 class AIPlayer(TictactoePlayer):
     def __init__(self, name, symbol):
         super().__init__(name, symbol)
-        self.board = [[-1,-1,-1], [-1,-1,-1], [-1,-1,-1]]
+        self.board = [[0,0,0], [0,0,0], [0,0,0]]
+        self.opponentMoves = []
+        self.AI = -1
+        self.human = 1
+        self.empty = 0
+        
     def nextMove(self, possibleMoves):
-        pass
+        move = self.monteCarloTreeSearch()
+        row, col = move
+        self.board[row][col] = self.AI
+        return move
+    
     def acknowledge(self, move):
+        self.opponentMoves.append(move)
         i,j = move
-        self.board[i][j] = 0
+        self.board[i][j] = self.human
+        
+    def monteCarloTreeSearch(self, N=5000):
+        def hasKMoves(k, startPos, delta, player, board):
+            numRow = len(board)
+            numCol = len(board[0])
+            row, col = startPos
+            deltaRow, deltaCol = delta
+            cnt = 0
+            while row >= 0 and row < numRow and col >= 0 and col < numCol and board[row][col] == player:
+                cnt += 1
+                row, col = row + deltaRow, col + deltaCol
+            row, col = startPos
+            while row >= 0 and row < numRow and col >= 0 and col < numCol and board[row][col] == player:
+                cnt += 1
+                row, col = row - deltaRow, col - deltaCol
+            cnt -= 1
+            return cnt >= k
+
+        def gameResult(board):
+            """Return 0 if draw or not complete game, 1 if opponent wins and -1 if AI wins"""
+            numRow = len(board)
+            numCol = len(board[0])
+            for player in [self.AI,self.human]:
+                for row in range(numRow):
+                    for col in range(numCol):
+                        if board[row][col] == player:
+                            if (hasKMoves(3, (row, col), (1,0), player, board) or
+                                hasKMoves(3, (row, col), (0,1), player, board) or
+                                hasKMoves(3, (row, col), (1,1), player, board) or
+                                hasKMoves(3, (row, col), (1,-1), player, board)):
+                                return player
+            return None
+                                
+        def quickCheckWinner(board, move):
+            """Return 0 if draw, 1 if opponents wins and -1 if AI wins"""
+            row, col = move
+            player = board[row][col]
+            if (hasKMoves(3, move, (1,0), player, board) or
+                hasKMoves(3, move, (0,1), player, board) or
+                hasKMoves(3, move, (1,1), player, board) or
+                hasKMoves(3, move, (1,-1), player, board)):
+                return player
+            return None
+                
+        def isGameTerminated(board):
+            for row in range(3):
+                for col in range(3):
+                    if board[row][col] == self.empty:
+                        return False
+            return True
+        
+        def expand(node):
+            children = []
+            player = node.player * -1
+            for row in range(3):
+                for col in range(3):
+                    if node.state[row][col] == self.empty:
+                        child = MCNode(move=(row, col),player=player,parent=node)
+                        children.append(child)
+            return children
+
+    
+        def select(node):
+            return random.choice(node.children)
+
+        def simulate(node):
+            nextNode = node
+            winner = None
+            while not isGameTerminated(nextNode.state):
+                children = expand(nextNode)
+                nextNode = random.choice(children)
+                winner = quickCheckWinner(nextNode.state, nextNode.move)
+                if winner != None:
+                    queue = expand(nextNode)
+                    tmp = 1
+                    while queue != []:
+                        tmp += len(queue)
+                        newQueue = []
+                        for child in queue:
+                            newQueue += expand(child)
+                        queue = newQueue
+                        
+                    if winner == self.human:
+                        node.lose += tmp
+                        break
+                    elif winner == self.AI:
+                        node.winOrDraw += tmp
+                        break
+            if winner == None:
+                node.winOrDraw += 1
+
+        def heu1(minLose):
+            def maxWinOrDraw(e):
+                if e.lose == minLose:
+                    return e.winOrDraw
+                return -1
+            return maxWinOrDraw
+
+        def heu2(e):
+            return e.lose
+        
+        def heu3(e):
+            if e.lose == 0:
+                return e.winOrDraw
+            return e.winOrDraw / e.lose
+        
+        recentOpponentMove = self.opponentMoves[-1]
+        copyBoard = list(map(list, self.board))
+        root = MCNode(move=recentOpponentMove, player=self.AI, state=copyBoard, parent=None)
+        root.children = expand(root)
+        for _ in range(N):
+            child = select(root)
+            winner = quickCheckWinner(child.state, child.move)
+            if winner != None:
+                queue = expand(child)
+                tmp = 1
+                while queue != []:
+                    tmp += len(queue)
+                    newQueue = []
+                    for node in queue:
+                        newQueue += expand(node)
+                    queue = newQueue
+                    
+                if winner == self.human:
+                    child.lose += tmp
+                    continue
+                elif winner == self.AI:
+                    child.winOrDraw += tmp
+                    continue
+            simulate(child)
+        minLose = min(root.children, key=heu2).lose
+        for child in root.children:
+            print(child.lose, child.winOrDraw)
+        bestChild = max(root.children, key=heu3)
+        return bestChild.move
+
         
     
 def play_a_new_game():
     #game = TicTacToe()
     human1 = HumanPlayer("human1", "X")
-    human2 = HumanPlayer("human2", "O")
-    game = TicTacToe(human1, human2)
+    AI = AIPlayer("AI", "O")
+    game = TicTacToe(human1, AI)
     game.run()
     #pass
 
