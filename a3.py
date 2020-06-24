@@ -159,13 +159,8 @@ class AIPlayer(TictactoePlayer):
         i,j = move
         self.board[i][j] = self.human
         
-    def monteCarloTreeSearch(self, N=2000):
+    def monteCarloTreeSearch(self, N=3000):
         
-        def ucb(n, C=1.4):
-            if n.numOfVisited == 0:
-                return np.inf
-            else:
-                return n.numOfWins / n.numOfVisited + C * np.sqrt(np.log(n.parent.numOfVisited) / n.numOfVisited)
         def hasKMoves(k, startPos, delta, player, board):
             numRow = len(board)
             numCol = len(board[0])
@@ -181,37 +176,32 @@ class AIPlayer(TictactoePlayer):
                 row, col = row - deltaRow, col - deltaCol
             cnt -= 1
             return cnt >= k
-                                                                                                 
-        def select(n):
-            """select a leaf node in the tree"""
-            if n.children != []:
-                return select(max(n.children, key=ucb))
-            else:
-                return n
+
         def selectLeafNode(node):
             # Find leaf node
             leaf = node
             while leaf.children != []:
                 leaf = leaf.bestChild()
             return leaf
+
         def expand(node):
             player = node.player * -1
-            if node.children == [] and quickCheckWinner(node.state, node.move) == 0:
+            if not node.children and quickCheckWinner(node.state, node.move) == 0:
                 for row in range(3):
                     for col in range(3):
                         if node.state[row][col] == self.empty:
                             child = MCNode(move=(row, col), player=player, parent=node)
                             node.children.append(child)
-            return select(node)
         def quickCheckWinner(board, move):
             """Return 0 if draw, 1 if human wins and -1 if AI wins"""
-            row, col = move
-            player = board[row][col]
-            if (hasKMoves(3, move, (1,0), player, board) or
-                hasKMoves(3, move, (0,1), player, board) or
-                hasKMoves(3, move, (1,1), player, board) or
-                hasKMoves(3, move, (1,-1), player, board)):
-                return player
+            if move:
+                row, col = move
+                player = board[row][col]
+                if (hasKMoves(3, move, (1,0), player, board) or
+                    hasKMoves(3, move, (0,1), player, board) or
+                    hasKMoves(3, move, (1,1), player, board) or
+                    hasKMoves(3, move, (1,-1), player, board)):
+                    return player
             return 0
         
         def simulate(node):
@@ -220,67 +210,54 @@ class AIPlayer(TictactoePlayer):
             rolloutResult = 0 # draw
             while True:
                 winner = quickCheckWinner(currNode.state, currNode.move)
-                expand(currNode)
-                if winner != 0 or len(currNode.children) == 0:
+                if winner != 0:
                     if winner == currPlayer:
                         rolloutResult = -1 # Opponent loses
                     else:
                         rolloutResult = 1 # Opponent wins
                     break
+                expand(currNode)
+                if not currNode.children:
+                    break
                 randNode = random.choice(currNode.children)
-                currNode = MCNode(move=randNode.move, player=randNode.player, parent=randNode.parent, state=randNode.state)
+                currNode = randNode
             return rolloutResult # draw
 
         def backprop(node, rolloutResult):
             currNode = node
             while currNode:
                 currNode.numOfVisited += 1
-                if rolloutResult > 0:
+                if rolloutResult > 0: # If AI wins, then increase number of wins
                     currNode.numOfWins += rolloutResult
+                if rolloutResult == 0:# If AI draws, also increase number of wins by half
+                    currNode.numOfWins += 0.5
                 currNode = currNode.parent
                 rolloutResult *= -1 # One wins, the other loses and vice versa
-        def _backprop(n, utility):
-            """passing the utility back to all parent nodes"""
-            if utility > 0:
-                n.numOfWins += utility
-                # if utility == 0:
-                #     n.U += 0.5
-            n.numOfVisited += 1
-            if n.parent:
-                _backprop(n.parent, -utility)
         def bestChildPolicy(child):
             return child.numOfVisited
-        
-        recentOpponentMove = self.opponentMoves[-1]
+
+        random.seed()
+        recentOpponentMove = self.opponentMoves[-1] if self.opponentMoves else None
         copyBoard = list(map(list, self.board))
         root = MCNode(move=recentOpponentMove, player=self.AI, state=copyBoard, parent=None)
-        #bestLeaf = select(root)
         for _ in range(N):
-            bestLeaf = select(root)
-            #print(bestLeaf.state, end=' ')
-            rolloutNode = expand(bestLeaf)
-            #print(rolloutNode.state)
-            #print(rolloutNode.state, end=' ')
-            #expand(bestLeaf)
-            #rolloutNode = bestLeaf
-            #if rolloutNode.children != []:
-            #    rolloutNode = selectLeaf(bestLeaf)
+            bestLeaf = selectLeafNode(root)
+            expand(bestLeaf)
+            rolloutNode = bestLeaf
+            if rolloutNode.children != []:
+                rolloutNode = selectLeafNode(bestLeaf)
             res = simulate(rolloutNode)
-            #print(res)
-            _backprop(rolloutNode, res)
-
-        for child in root.children:
-            print(child.numOfVisited, child.numOfWins)
+            backprop(rolloutNode, res)
         bestChild = max(root.children, key=bestChildPolicy)
         return bestChild.move
-        #return (0,0)
 
         
             
 def play_a_new_game():
     #game = TicTacToe()
-    human1 = HumanPlayer("human1", "X")
+    human1 = HumanPlayer("human", "X")
     AI = AIPlayer("AI", "O")
+    
     game = TicTacToe(human1, AI)
     game.run()
     #pass
