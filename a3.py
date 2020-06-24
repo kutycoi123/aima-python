@@ -1,5 +1,7 @@
 import sys
 import random
+import math
+import numpy as np
 class TicTacToe:
     def __init__(self, player1, player2):
         self.board = [["*","*","*"], ["*","*","*"], ["*","*","*"]]
@@ -111,7 +113,7 @@ class HumanPlayer(TictactoePlayer):
         row = int(input("Choose a row: "))
         col = int(input("Choose a col: "))
         return (row, col)
-
+INF = float('inf')
 class MCNode:
     """Monte carlo node"""
     def __init__(self, move, parent, player, state=None):
@@ -119,14 +121,23 @@ class MCNode:
         self.parent = parent
         self.state = state
         self.player = player
-        if parent != None:
+        if parent != None and state == None:
             copyState = list(map(list, parent.state))
             row, col = move
             copyState[row][col] = player * -1
             self.state = copyState
         self.children = []
-        self.lose = 0
-        self.winOrDraw = 0
+        self.numOfVisited = 0
+        self.numOfWins = 0
+
+    def bestChild(self):
+        def ucb(n, C=1.4):
+            return np.inf if n.numOfVisited == 0 else n.numOfWins / n.numOfVisited + C * np.sqrt(np.log(n.parent.numOfVisited) / n.numOfVisited)
+        def uct(node, C_PARAM=1.4):
+            if node.numOfVisited == 0 or node.parent.numOfVisited == 0:
+                return INF
+            return node.numOfWins / node.numOfVisited + C_PARAM * (math.sqrt(math.log(node.parent.numOfVisited)) / node.numOfVisited)
+        return max(self.children, key=ucb)
         
 class AIPlayer(TictactoePlayer):
     def __init__(self, name, symbol):
@@ -148,7 +159,13 @@ class AIPlayer(TictactoePlayer):
         i,j = move
         self.board[i][j] = self.human
         
-    def monteCarloTreeSearch(self, N=5000):
+    def monteCarloTreeSearch(self, N=2000):
+        
+        def ucb(n, C=1.4):
+            if n.numOfVisited == 0:
+                return np.inf
+            else:
+                return n.numOfWins / n.numOfVisited + C * np.sqrt(np.log(n.parent.numOfVisited) / n.numOfVisited)
         def hasKMoves(k, startPos, delta, player, board):
             numRow = len(board)
             numCol = len(board[0])
@@ -164,24 +181,30 @@ class AIPlayer(TictactoePlayer):
                 row, col = row - deltaRow, col - deltaCol
             cnt -= 1
             return cnt >= k
-
-        def gameResult(board):
-            """Return 0 if draw or not complete game, 1 if opponent wins and -1 if AI wins"""
-            numRow = len(board)
-            numCol = len(board[0])
-            for player in [self.AI,self.human]:
-                for row in range(numRow):
-                    for col in range(numCol):
-                        if board[row][col] == player:
-                            if (hasKMoves(3, (row, col), (1,0), player, board) or
-                                hasKMoves(3, (row, col), (0,1), player, board) or
-                                hasKMoves(3, (row, col), (1,1), player, board) or
-                                hasKMoves(3, (row, col), (1,-1), player, board)):
-                                return player
-            return None
-                                
+                                                                                                 
+        def select(n):
+            """select a leaf node in the tree"""
+            if n.children != []:
+                return select(max(n.children, key=ucb))
+            else:
+                return n
+        def selectLeafNode(node):
+            # Find leaf node
+            leaf = node
+            while leaf.children != []:
+                leaf = leaf.bestChild()
+            return leaf
+        def expand(node):
+            player = node.player * -1
+            if node.children == [] and quickCheckWinner(node.state, node.move) == 0:
+                for row in range(3):
+                    for col in range(3):
+                        if node.state[row][col] == self.empty:
+                            child = MCNode(move=(row, col), player=player, parent=node)
+                            node.children.append(child)
+            return select(node)
         def quickCheckWinner(board, move):
-            """Return 0 if draw, 1 if opponents wins and -1 if AI wins"""
+            """Return 0 if draw, 1 if human wins and -1 if AI wins"""
             row, col = move
             player = board[row][col]
             if (hasKMoves(3, move, (1,0), player, board) or
@@ -189,105 +212,71 @@ class AIPlayer(TictactoePlayer):
                 hasKMoves(3, move, (1,1), player, board) or
                 hasKMoves(3, move, (1,-1), player, board)):
                 return player
-            return None
-                
-        def isGameTerminated(board):
-            for row in range(3):
-                for col in range(3):
-                    if board[row][col] == self.empty:
-                        return False
-            return True
+            return 0
         
-        def expand(node):
-            children = []
-            player = node.player * -1
-            for row in range(3):
-                for col in range(3):
-                    if node.state[row][col] == self.empty:
-                        child = MCNode(move=(row, col),player=player,parent=node)
-                        children.append(child)
-            return children
-
-    
-        def select(node):
-            return random.choice(node.children)
-
         def simulate(node):
-            nextNode = node
-            winner = None
+            currNode = MCNode(move=node.move, player=node.player, parent=node.parent, state=node.state)
+            currPlayer = node.player
+            rolloutResult = 0 # draw
             while True:
-                winner = quickCheckWinner(nextNode.state, nextNode.move)
-                if winner != None:
-                    queue = expand(nextNode)
-                    tmp = 1
-                    while queue != []:
-                        tmp += len(queue)
-                        newQueue = []
-                        for child in queue:
-                            newQueue += expand(child)
-                        queue = newQueue
-                        
-                    if winner == self.human:
-                        node.lose += tmp
-                        break
-                    elif winner == self.AI:
-                        node.winOrDraw += tmp
-                        break
-                if isGameTerminated(nextNode.state):
+                winner = quickCheckWinner(currNode.state, currNode.move)
+                expand(currNode)
+                if winner != 0 or len(currNode.children) == 0:
+                    if winner == currPlayer:
+                        rolloutResult = -1 # Opponent loses
+                    else:
+                        rolloutResult = 1 # Opponent wins
                     break
-                children = expand(nextNode)
-                nextNode = random.choice(children)
+                randNode = random.choice(currNode.children)
+                currNode = MCNode(move=randNode.move, player=randNode.player, parent=randNode.parent, state=randNode.state)
+            return rolloutResult # draw
 
-            if winner == None:
-                node.winOrDraw += 1
-
-        def heu1(minLose):
-            def maxWinOrDraw(e):
-                if e.lose == minLose:
-                    return e.winOrDraw
-                return -1
-            return maxWinOrDraw
-
-        def heu2(e):
-            return e.lose
-        
-        def heu3(e):
-            if e.lose == 0:
-                return e.winOrDraw
-            return e.winOrDraw / e.lose
+        def backprop(node, rolloutResult):
+            currNode = node
+            while currNode:
+                currNode.numOfVisited += 1
+                if rolloutResult > 0:
+                    currNode.numOfWins += rolloutResult
+                currNode = currNode.parent
+                rolloutResult *= -1 # One wins, the other loses and vice versa
+        def _backprop(n, utility):
+            """passing the utility back to all parent nodes"""
+            if utility > 0:
+                n.numOfWins += utility
+                # if utility == 0:
+                #     n.U += 0.5
+            n.numOfVisited += 1
+            if n.parent:
+                _backprop(n.parent, -utility)
+        def bestChildPolicy(child):
+            return child.numOfVisited
         
         recentOpponentMove = self.opponentMoves[-1]
         copyBoard = list(map(list, self.board))
         root = MCNode(move=recentOpponentMove, player=self.AI, state=copyBoard, parent=None)
-        root.children = expand(root)
+        #bestLeaf = select(root)
         for _ in range(N):
-            child = select(root)
-            #winner = quickCheckWinner(child.state, child.move)
-            #if winner != None:
-            #    queue = expand(child)
-            #    tmp = 1
-            #    while queue != []:
-            #        tmp += len(queue)
-            #        newQueue = []
-            #        for node in queue:
-            #            newQueue += expand(node)
-            #        queue = newQueue
-            #        
-            #    if winner == self.human:
-            #        child.lose += tmp
-            #        continue
-            #    elif winner == self.AI:
-            #        child.winOrDraw += tmp
-            #        continue
-            simulate(child)
-        minLose = min(root.children, key=heu2).lose
+            bestLeaf = select(root)
+            #print(bestLeaf.state, end=' ')
+            rolloutNode = expand(bestLeaf)
+            #print(rolloutNode.state)
+            #print(rolloutNode.state, end=' ')
+            #expand(bestLeaf)
+            #rolloutNode = bestLeaf
+            #if rolloutNode.children != []:
+            #    rolloutNode = selectLeaf(bestLeaf)
+            res = simulate(rolloutNode)
+            #print(res)
+            _backprop(rolloutNode, res)
+
         for child in root.children:
-            print(child.lose, child.winOrDraw)
-        bestChild = max(root.children, key=heu3)
+            print(child.numOfVisited, child.numOfWins)
+        bestChild = max(root.children, key=bestChildPolicy)
         return bestChild.move
+        #return (0,0)
 
         
-    
+            
 def play_a_new_game():
     #game = TicTacToe()
     human1 = HumanPlayer("human1", "X")
