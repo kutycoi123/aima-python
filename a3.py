@@ -113,7 +113,7 @@ class HumanPlayer(TictactoePlayer):
         row = int(input("Choose a row: "))
         col = int(input("Choose a col: "))
         return (row, col)
-INF = float('inf')
+    
 class MCNode:
     """Monte carlo node"""
     def __init__(self, move, parent, player, state=None):
@@ -126,21 +126,95 @@ class MCNode:
             row, col = move
             copyState[row][col] = player * -1
             self.state = copyState
+        self.AI = -1
+        self.human = 1
+        self.empty = 0
         self.children = []
         self.numOfVisited = 0
         self.numOfWins = 0
+        
+    def __hasKMoves(self, k, startPos, delta, player, board):
+        numRow = len(board)
+        numCol = len(board[0])
+        row, col = startPos
+        deltaRow, deltaCol = delta
+        cnt = 0
+        while row >= 0 and row < numRow and col >= 0 and col < numCol and board[row][col] == player:
+            cnt += 1
+            row, col = row + deltaRow, col + deltaCol
+        row, col = startPos
+        while row >= 0 and row < numRow and col >= 0 and col < numCol and board[row][col] == player:
+            cnt += 1
+            row, col = row - deltaRow, col - deltaCol
+        cnt -= 1
+        return cnt >= k
+    def __quickCheckWinner(self):
+        """Return 0 if draw, 1 if human wins and -1 if AI wins"""
+        move = self.move
+        board = self.state
+        if move:
+            row, col = move
+            player = self.state[row][col]
+            if (self.__hasKMoves(3, move, (1,0), player, board) or
+                self.__hasKMoves(3, move, (0,1), player, board) or
+                self.__hasKMoves(3, move, (1,1), player, board) or
+                self.__hasKMoves(3, move, (1,-1), player, board)):
+                return player
+            return 0
 
     def bestChild(self):
-        def uct(node, C_PARAM=1.4):
-            if node.numOfVisited == 0 or node.parent.numOfVisited == 0:
-                return INF
-            return node.numOfWins / node.numOfVisited + C_PARAM * (math.sqrt(math.log(node.parent.numOfVisited)) / node.numOfVisited)
+        """Return the best child based on heuristic"""
         def heuristic(node):
-            if node.numOfVisited == 0:
-                return INF
-            return (node.numOfWins + node.parent.numOfVisited) / node.numOfVisited
-        #return max(self.children, key=uct)
+            if node.numOfVisited == 0 or node.parent.numOfVisited == 0:
+                return float('inf')
+            return node.numOfWins / node.numOfVisited + 1.4 * (math.sqrt(math.log(node.parent.numOfVisited)) / node.numOfVisited)
         return max(self.children, key=heuristic)
+    
+    def selectLeafNode(self):
+        """Return a node if it doesn't have children, otherwise return the best child for rollout"""
+        # Find leaf node
+        leaf = self
+        while leaf.children != []:
+            return leaf.bestChild()
+        return leaf
+    
+    def expand(self):
+        player = self.player * -1
+        if not self.children and self.__quickCheckWinner() == 0:
+            for row in range(3):
+                for col in range(3):
+                    if self.state[row][col] == self.empty:
+                        child = MCNode(move=(row, col), player=player, parent=self)
+                        self.children.append(child)
+    def simulate(self):
+        node = self
+        currNode = MCNode(move=node.move, player=node.player, parent=node.parent, state=node.state)
+        currPlayer = node.player
+        rolloutResult = 0 # draw
+        while True:
+            winner = currNode.__quickCheckWinner()
+            if winner != 0:
+                if winner == currPlayer:
+                    rolloutResult = -1 # Opponent loses
+                else:
+                    rolloutResult = 1 # Opponent wins
+                break
+            currNode.expand()
+            if not currNode.children:
+                break
+            currNode = random.choice(currNode.children)
+        return rolloutResult # draw
+        
+    def bubbleUpResult(self, rolloutResult):
+        currNode = self
+        while currNode:
+            currNode.numOfVisited += 1
+            if rolloutResult > 0: # If AI wins, then increase number of wins
+                currNode.numOfWins += rolloutResult
+            if rolloutResult == 0:
+                currNode.numOfWins += 0.5
+            currNode = currNode.parent
+            rolloutResult *= -1 # One wins, the other loses and vice versa
         
 class AIPlayer(TictactoePlayer):
     def __init__(self, name, symbol):
@@ -163,7 +237,7 @@ class AIPlayer(TictactoePlayer):
         self.board[i][j] = self.human
         
     def monteCarloTreeSearch(self, N=3000):
-        
+
         def hasKMoves(k, startPos, delta, player, board):
             numRow = len(board)
             numCol = len(board[0])
@@ -198,7 +272,6 @@ class AIPlayer(TictactoePlayer):
                             child = MCNode(move=(row, col), player=player, parent=node)
                             node.children.append(child)
         def quickCheckWinner(board, move):
-            """Return 0 if draw, 1 if human wins and -1 if AI wins"""
             if move:
                 row, col = move
                 player = board[row][col]
@@ -246,6 +319,7 @@ class AIPlayer(TictactoePlayer):
         copyBoard = list(map(list, self.board))
         root = MCNode(move=recentOpponentMove, player=self.AI, state=copyBoard, parent=None)
         for _ in range(N):
+            """
             bestLeaf = selectLeafNode(root)
             expand(bestLeaf)
             rolloutNode = bestLeaf
@@ -253,6 +327,16 @@ class AIPlayer(TictactoePlayer):
                 rolloutNode = selectLeafNode(bestLeaf)
             res = simulate(rolloutNode)
             bubbleUpResult(rolloutNode, res)
+            """
+            
+            bestLeaf = root.selectLeafNode()
+            bestLeaf.expand()
+            rolloutNode = bestLeaf
+            if rolloutNode.children != []:
+                rolloutNode = bestLeaf.selectLeafNode()
+            rolloutRes = rolloutNode.simulate()
+            rolloutNode.bubbleUpResult(rolloutRes)
+            
         bestChild = max(root.children, key=bestChildPolicy)
         return bestChild.move
 
