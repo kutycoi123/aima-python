@@ -1,7 +1,6 @@
 import sys
 import random
 import math
-import numpy as np
 class TicTacToe:
     def __init__(self, player1, player2):
         self.board = [["*","*","*"], ["*","*","*"], ["*","*","*"]]
@@ -110,8 +109,15 @@ class HumanPlayer(TictactoePlayer):
     def __init__(self, name, symbol):
         super().__init__(name, symbol)
     def nextMove(self, possibleMoves):
-        row = int(input("Choose a row: "))
-        col = int(input("Choose a col: "))
+        possibleRows = set()
+        possibleCols = set()
+        for move in possibleMoves:
+            possibleRows.add(move[0])
+        row = int(input("Choose a row(" + str(possibleRows) + "):"))
+        for move in possibleMoves:
+            if move[0] == row:
+                possibleCols.add(move[1])
+        col = int(input("Choose a col(" + str(possibleCols) + "):"))
         return (row, col)
     
 class MCNode:
@@ -160,7 +166,7 @@ class MCNode:
                 self.__hasKMoves(3, move, (1,1), player, board) or
                 self.__hasKMoves(3, move, (1,-1), player, board)):
                 return player
-            return 0
+        return 0
 
     def bestChild(self):
         """Return the best child based on heuristic"""
@@ -170,8 +176,8 @@ class MCNode:
             return node.numOfWins / node.numOfVisited + 1.4 * (math.sqrt(math.log(node.parent.numOfVisited)) / node.numOfVisited)
         return max(self.children, key=heuristic)
     
-    def selectLeafNode(self):
-        """Return a node if it doesn't have children, otherwise return the best child for rollout"""
+    def selectBestChild(self):
+        """Return node itself if it doesn't have children, otherwise return the best child for rollout"""
         # Find leaf node
         leaf = self
         while leaf.children != []:
@@ -179,6 +185,7 @@ class MCNode:
         return leaf
     
     def expand(self):
+        """Expand children of a node if it doesn't have"""
         player = self.player * -1
         if not self.children and self.__quickCheckWinner() == 0:
             for row in range(3):
@@ -186,7 +193,8 @@ class MCNode:
                     if self.state[row][col] == self.empty:
                         child = MCNode(move=(row, col), player=player, parent=self)
                         self.children.append(child)
-    def simulate(self):
+    def rollout(self):
+        """Perform rollout/playout to see if this node can lead to a win/draw/lose and return the result"""
         node = self
         currNode = MCNode(move=node.move, player=node.player, parent=node.parent, state=node.state)
         currPlayer = node.player
@@ -206,13 +214,12 @@ class MCNode:
         return rolloutResult # draw
         
     def bubbleUpResult(self, rolloutResult):
+        """Bubble the rollout result from the current node up to the root, something similar to bubble up operation in heap"""
         currNode = self
         while currNode:
             currNode.numOfVisited += 1
-            if rolloutResult > 0: # If AI wins, then increase number of wins
+            if rolloutResult > 0: # If player wins, then increase number of wins
                 currNode.numOfWins += rolloutResult
-            if rolloutResult == 0:
-                currNode.numOfWins += 0.5
             currNode = currNode.parent
             rolloutResult *= -1 # One wins, the other loses and vice versa
         
@@ -226,130 +233,62 @@ class AIPlayer(TictactoePlayer):
         self.empty = 0
         
     def nextMove(self, possibleMoves):
-        move = self.monteCarloTreeSearch()
+        """Return next move for AI player"""
+        move = self.searchGoodMove()
         row, col = move
         self.board[row][col] = self.AI
         return move
     
     def acknowledge(self, move):
+        """This method is triggered when the opponent did a move so that AI can record that move
+        and decide which move it should take
+        """
         self.opponentMoves.append(move)
         i,j = move
         self.board[i][j] = self.human
         
-    def monteCarloTreeSearch(self, N=3000):
-
-        def hasKMoves(k, startPos, delta, player, board):
-            numRow = len(board)
-            numCol = len(board[0])
-            row, col = startPos
-            deltaRow, deltaCol = delta
-            cnt = 0
-            while row >= 0 and row < numRow and col >= 0 and col < numCol and board[row][col] == player:
-                cnt += 1
-                row, col = row + deltaRow, col + deltaCol
-            row, col = startPos
-            while row >= 0 and row < numRow and col >= 0 and col < numCol and board[row][col] == player:
-                cnt += 1
-                row, col = row - deltaRow, col - deltaCol
-            cnt -= 1
-            return cnt >= k
-
-        def selectLeafNode(node):
-            # Find leaf node
-            leaf = node
-            #while leaf.children != []:
-            #    leaf = leaf.bestChild()
-            while leaf.children != []:
-                return leaf.bestChild()
-            return leaf
-
-        def expand(node):
-            player = node.player * -1
-            if not node.children and quickCheckWinner(node.state, node.move) == 0:
-                for row in range(3):
-                    for col in range(3):
-                        if node.state[row][col] == self.empty:
-                            child = MCNode(move=(row, col), player=player, parent=node)
-                            node.children.append(child)
-        def quickCheckWinner(board, move):
-            if move:
-                row, col = move
-                player = board[row][col]
-                if (hasKMoves(3, move, (1,0), player, board) or
-                    hasKMoves(3, move, (0,1), player, board) or
-                    hasKMoves(3, move, (1,1), player, board) or
-                    hasKMoves(3, move, (1,-1), player, board)):
-                    return player
-            return 0
-        
-        def simulate(node):
-            currNode = MCNode(move=node.move, player=node.player, parent=node.parent, state=node.state)
-            currPlayer = node.player
-            rolloutResult = 0 # draw
-            while True:
-                winner = quickCheckWinner(currNode.state, currNode.move)
-                if winner != 0:
-                    if winner == currPlayer:
-                        rolloutResult = -1 # Opponent loses
-                    else:
-                        rolloutResult = 1 # Opponent wins
-                    break
-                expand(currNode)
-                if not currNode.children:
-                    break
-                randNode = random.choice(currNode.children)
-                currNode = randNode
-            return rolloutResult # draw
-
-        def bubbleUpResult(node, rolloutResult):
-            currNode = node
-            while currNode:
-                currNode.numOfVisited += 1
-                if rolloutResult > 0: # If AI wins, then increase number of wins
-                    currNode.numOfWins += rolloutResult
-                if rolloutResult == 0:# If AI draws, also increase number of wins by half
-                    currNode.numOfWins += 0.5
-                currNode = currNode.parent
-                rolloutResult *= -1 # One wins, the other loses and vice versa
-        def bestChildPolicy(child):
-            return child.numOfVisited
-
+    def searchGoodMove(self, N=3000):
+        """Perform random rollouts to find a good move that potentially lead to a draw or win"""
+        def bestChildPolicy(node):
+            return node.numOfVisited
         random.seed()
         recentOpponentMove = self.opponentMoves[-1] if self.opponentMoves else None
         copyBoard = list(map(list, self.board))
         root = MCNode(move=recentOpponentMove, player=self.AI, state=copyBoard, parent=None)
+        root.expand()
         for _ in range(N):
-            """
-            bestLeaf = selectLeafNode(root)
-            expand(bestLeaf)
-            rolloutNode = bestLeaf
-            if rolloutNode.children != []:
-                rolloutNode = selectLeafNode(bestLeaf)
-            res = simulate(rolloutNode)
-            bubbleUpResult(rolloutNode, res)
-            """
-            
-            bestLeaf = root.selectLeafNode()
+            bestLeaf = root.selectBestChild()
             bestLeaf.expand()
             rolloutNode = bestLeaf
             if rolloutNode.children != []:
-                rolloutNode = bestLeaf.selectLeafNode()
-            rolloutRes = rolloutNode.simulate()
+                rolloutNode = bestLeaf.selectBestChild()
+            rolloutRes = rolloutNode.rollout()
             rolloutNode.bubbleUpResult(rolloutRes)
-            
+
         bestChild = max(root.children, key=bestChildPolicy)
         return bestChild.move
 
         
             
 def play_a_new_game():
-    #game = TicTacToe()
-    human1 = HumanPlayer("human", "X")
-    AI = AIPlayer("AI", "O")
+    """Run the game with human and AI
+    """
+    print("======================= TicTacToe game =====================")
     
-    game = TicTacToe(human1, AI)
+    humanFirst = int(input("Please choose to go first or second (0 for first, 1 for second):"))
+    game = None
+    if humanFirst == 0:
+        human = HumanPlayer("human", "X")
+        AI = AIPlayer("AI", "O")
+        game = TicTacToe(human, AI)
+    elif humanFirst == 1:
+        human = HumanPlayer("human", "O")
+        AI = AIPlayer("AI", "X")
+        game = TicTacToe(AI, human)
+    else:
+        raise Exception("You have to choose either go first(0) or second(1)")
+    #game = TicTacToe(human, AI)
     game.run()
-    #pass
 
 if __name__ == "__main__":
     play_a_new_game()
