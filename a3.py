@@ -131,13 +131,16 @@ class MCNode:
         self.numOfWins = 0
 
     def bestChild(self):
-        def ucb(n, C=1.4):
-            return np.inf if n.numOfVisited == 0 else n.numOfWins / n.numOfVisited + C * np.sqrt(np.log(n.parent.numOfVisited) / n.numOfVisited)
         def uct(node, C_PARAM=1.4):
             if node.numOfVisited == 0 or node.parent.numOfVisited == 0:
                 return INF
             return node.numOfWins / node.numOfVisited + C_PARAM * (math.sqrt(math.log(node.parent.numOfVisited)) / node.numOfVisited)
-        return max(self.children, key=ucb)
+        def heuristic(node):
+            if node.numOfVisited == 0:
+                return INF
+            return (node.numOfWins + node.parent.numOfVisited) / node.numOfVisited
+        #return max(self.children, key=uct)
+        return max(self.children, key=heuristic)
         
 class AIPlayer(TictactoePlayer):
     def __init__(self, name, symbol):
@@ -180,8 +183,10 @@ class AIPlayer(TictactoePlayer):
         def selectLeafNode(node):
             # Find leaf node
             leaf = node
+            #while leaf.children != []:
+            #    leaf = leaf.bestChild()
             while leaf.children != []:
-                leaf = leaf.bestChild()
+                return leaf.bestChild()
             return leaf
 
         def expand(node):
