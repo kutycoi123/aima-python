@@ -228,7 +228,7 @@ class AIPlayer(TictactoePlayer):
                 currNode = randNode
             return rolloutResult # draw
 
-        def backprop(node, rolloutResult):
+        def bubbleUpResult(node, rolloutResult):
             currNode = node
             while currNode:
                 currNode.numOfVisited += 1
@@ -252,7 +252,7 @@ class AIPlayer(TictactoePlayer):
             if rolloutNode.children != []:
                 rolloutNode = selectLeafNode(bestLeaf)
             res = simulate(rolloutNode)
-            backprop(rolloutNode, res)
+            bubbleUpResult(rolloutNode, res)
         bestChild = max(root.children, key=bestChildPolicy)
         return bestChild.move
 
