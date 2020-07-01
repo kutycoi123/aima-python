@@ -2,6 +2,7 @@ import sys
 import random
 import math
 class TicTacToe:
+    """ TicTacToe class represents a tictactoe game that allows 2 players to play """
     def __init__(self, player1, player2):
         self.board = [["*","*","*"], ["*","*","*"], ["*","*","*"]]
         self.size = 3
@@ -12,10 +13,12 @@ class TicTacToe:
         self.winner = None
 
     def updateBoard(self, player, move):
+        """ Update the board cell based on player move """
         i, j = move
         self.board[i][j] = player.symbol
         
     def getPossibleMoves(self):
+        """ Return all possible moves on board """
         moves = []
         for i in range(self.size):
             for j in range(self.size):
@@ -24,11 +27,13 @@ class TicTacToe:
         return moves
     
     def get(self, row, col):
+        """ Return the board cell (row, col)"""
         if row >= 0 and row < self.size and col >= 0 and col < self.size:
             return self.board[row][col]
         return None
     
     def hasConsecutiveKMoves(self, k, startPos, delta, player):
+        """ Check if from startPos there are k consecutive moves of the same player"""
         row, col = startPos
         deltaRow, deltaCol = delta
         cnt = 0
@@ -42,63 +47,72 @@ class TicTacToe:
         cnt -= 1
         return cnt >= k
     
-    def isWinner(self, curPos, player):
+    def isWinner(self, move, player):
+        """ Check if player's move can help them win"""
         k = self.adjMoveToWin
-        if (self.hasConsecutiveKMoves(k, curPos, (1,0), player) or
-            self.hasConsecutiveKMoves(k, curPos, (0,1), player) or
-            self.hasConsecutiveKMoves(k, curPos, (1,1), player) or
-            self.hasConsecutiveKMoves(k, curPos, (1,-1), player)):
+        if (self.hasConsecutiveKMoves(k, move, (1,0), player) or
+            self.hasConsecutiveKMoves(k, move, (0,1), player) or
+            self.hasConsecutiveKMoves(k, move, (1,1), player) or
+            self.hasConsecutiveKMoves(k, move, (1,-1), player)):
             return True
         return False
 
     def printBoard(self):
+        """ Print the board on screen """
         for i in range(self.size):
             for j in range(self.size):
                 print(self.board[i][j], end=' ')
             print()
         
     def playerMove(self, ply):
-        possibleMoves = self.getPossibleMoves()
+        """ Get player's next move"""
+        possibleMoves = self.getPossibleMoves() # Get all possible moves
         while self.nPossibleMoves > 0:
-            plyMove = ply.nextMove(possibleMoves)
-            if plyMove not in possibleMoves:
+            plyMove = ply.nextMove(possibleMoves) # Let player make a move
+            # Validate move
+            if plyMove not in possibleMoves: # invalid move
                 print("Invalid move. Please choose another move!!!")
                 continue
-            self.updateBoard(ply, plyMove)
-            self.nPossibleMoves -= 1
+            self.updateBoard(ply, plyMove) # Valid move, let's update the board
+            self.nPossibleMoves -= 1 
             return plyMove 
         
     def run(self):
+        """ Run the game """
         self.printBoard()
         while True:
             print("Player {name} turn".format(name = self.ply1.name))
-            ply1Move = self.playerMove(self.ply1)
+            ply1Move = self.playerMove(self.ply1) # Let player1 move
             self.printBoard()
+            # Check if game is over: either there is no other empty cell or one player has won
             isOver = self.nPossibleMoves == 0
             if self.isWinner(ply1Move, self.ply1):
                 self.winner = self.ply1
                 isOver = True
             if isOver:
                 break
-            self.ply2.acknowledge(ply1Move)
+            
+            self.ply2.acknowledge(ply1Move) # Acknowledge player2 about player1's move
             print("Player {name} turn".format(name = self.ply2.name))
-            ply2Move = self.playerMove(self.ply2)
+            ply2Move = self.playerMove(self.ply2) # Let player2 move
             self.printBoard()
+            # Check if game is over: either there is no other empty cell or player2 already won
             if self.isWinner(ply2Move, self.ply2):
                 self.winner = self.ply2
                 isOver = True
             if isOver:
                 break
-            self.ply1.acknowledge(ply2Move)
+            self.ply1.acknowledge(ply2Move) # Acknowledge player1 about player2's move
         if not self.winner:
-            print("Draw!!!")
+            print("Game over: Draw!!!")
         else:
-            print("Player {name} wins".format(name = self.winner.name))
+            print("Game over: Player {name} wins".format(name = self.winner.name))
 
 class TictactoePlayer:
+    """ Interface for tictactoe player """
     def __init__(self, name, symbol):
         self.name = name
-        self.symbol = symbol
+        self.symbol = symbol #the symbol displayed on board, normally just 'X' or 'O'
 
     def nextMove(self, possibleMoves):
         pass
@@ -121,7 +135,7 @@ class HumanPlayer(TictactoePlayer):
         return (row, col)
     
 class MCNode:
-    """Monte carlo node"""
+    """Node for monte carlo tree search"""
     def __init__(self, move, parent, player, state=None):
         self.move = move
         self.parent = parent
@@ -140,6 +154,7 @@ class MCNode:
         self.numOfWins = 0
         
     def __hasKMoves(self, k, startPos, delta, player, board):
+        """ Check if there is k consecutive moves of the same player starting from startPos """
         numRow = len(board)
         numCol = len(board[0])
         row, col = startPos
@@ -154,8 +169,9 @@ class MCNode:
             row, col = row - deltaRow, col - deltaCol
         cnt -= 1
         return cnt >= k
+    
     def __quickCheckWinner(self):
-        """Return 0 if draw, 1 if human wins and -1 if AI wins"""
+        """ Return 0 if draw, 1 if human wins and -1 if AI wins """
         move = self.move
         board = self.state
         if move:
@@ -169,7 +185,7 @@ class MCNode:
         return 0
 
     def bestChild(self):
-        """Return the best child based on heuristic"""
+        """ Return the best child based on heuristic """
         def heuristic(node):
             if node.numOfVisited == 0 or node.parent.numOfVisited == 0:
                 return float('inf')
@@ -177,7 +193,7 @@ class MCNode:
         return max(self.children, key=heuristic)
     
     def selectBestChild(self):
-        """Return node itself if it doesn't have children, otherwise return the best child for rollout"""
+        """ Return node itself if it doesn't have children, otherwise return the best child for rollout """
         # Find leaf node
         leaf = self
         while leaf.children != []:
@@ -185,7 +201,7 @@ class MCNode:
         return leaf
     
     def expand(self):
-        """Expand children of a node if it doesn't have"""
+        """ Expand children of a node if it doesn't have """
         player = self.player * -1
         if not self.children and self.__quickCheckWinner() == 0:
             for row in range(3):
@@ -194,7 +210,7 @@ class MCNode:
                         child = MCNode(move=(row, col), player=player, parent=self)
                         self.children.append(child)
     def rollout(self):
-        """Perform rollout/playout to see if this node can lead to a win/draw/lose and return the result"""
+        """ Perform random rollout/playout to see if this node can lead to a win/draw/lose and return the result """
         node = self
         currNode = MCNode(move=node.move, player=node.player, parent=node.parent, state=node.state)
         currPlayer = node.player
@@ -210,11 +226,11 @@ class MCNode:
             currNode.expand()
             if not currNode.children:
                 break
-            currNode = random.choice(currNode.children)
+            currNode = random.choice(currNode.children) # Random rollout
         return rolloutResult # draw
         
     def bubbleUpResult(self, rolloutResult):
-        """Bubble the rollout result from the current node up to the root, something similar to bubble up operation in heap"""
+        """ Bubble the rollout result from the current node up to the root, something similar to bubble up operation in heap """
         currNode = self
         while currNode:
             currNode.numOfVisited += 1
@@ -233,35 +249,37 @@ class AIPlayer(TictactoePlayer):
         self.empty = 0
         
     def nextMove(self, possibleMoves):
-        """Return next move for AI player"""
+        """ Return next move for AI player """
         move = self.searchGoodMove()
         row, col = move
         self.board[row][col] = self.AI
         return move
     
     def acknowledge(self, move):
-        """This method is triggered when the opponent did a move so that AI can record that move
-        and decide which move it should take
+        """ This method is triggered when the opponent did a move so that AI can record that move
+            and decide which move it should take
         """
         self.opponentMoves.append(move)
         i,j = move
         self.board[i][j] = self.human
         
     def searchGoodMove(self, N=3000):
-        """Perform random rollouts to find a good move that potentially lead to a draw or win"""
+        """ Perform random rollouts to find a good move that potentially lead to a draw or win """
         def bestChildPolicy(node):
             return node.numOfVisited
         random.seed()
         recentOpponentMove = self.opponentMoves[-1] if self.opponentMoves else None
         copyBoard = list(map(list, self.board))
+        # Generate root node
         root = MCNode(move=recentOpponentMove, player=self.AI, state=copyBoard, parent=None)
-        root.expand()
+        root.expand() # Expand children for root
+        # Perform N rollouts
         for _ in range(N):
-            bestLeaf = root.selectBestChild()
-            bestLeaf.expand()
-            rolloutNode = bestLeaf
+            bestChild = root.selectBestChild() # Select best child according to win/lose/draw stats
+            bestChild.expand() # Expand children for best child 
+            rolloutNode = bestChild 
             if rolloutNode.children != []:
-                rolloutNode = bestLeaf.selectBestChild()
+                rolloutNode = rolloutNode.selectBestChild()
             rolloutRes = rolloutNode.rollout()
             rolloutNode.bubbleUpResult(rolloutRes)
 
@@ -271,8 +289,7 @@ class AIPlayer(TictactoePlayer):
         
             
 def play_a_new_game():
-    """Run the game with human and AI
-    """
+    """ Run the tictactoe game with human and AI """
     print("======================= TicTacToe game =====================")
     
     humanFirst = int(input("Please choose to go first or second (0 for first, 1 for second):"))
@@ -287,7 +304,6 @@ def play_a_new_game():
         game = TicTacToe(AI, human)
     else:
         raise Exception("You have to choose either go first(0) or second(1)")
-    #game = TicTacToe(human, AI)
     game.run()
 
 if __name__ == "__main__":
