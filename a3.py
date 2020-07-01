@@ -264,7 +264,7 @@ class AIPlayer(TictactoePlayer):
         self.board[i][j] = self.human
         
     def searchGoodMove(self, N=3000):
-        """ Perform random rollouts to find a good move that potentially lead to a draw or win """
+        """ Used pure monte carlo tree search to perform random rollouts to find a good move that potentially lead to a draw or win """
         def bestChildPolicy(node):
             return node.numOfVisited
         random.seed()
