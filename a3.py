@@ -76,9 +76,16 @@ class TicTacToe:
             self.updateBoard(ply, plyMove) # Valid move, let's update the board
             self.nPossibleMoves -= 1 
             return plyMove 
-        
+    def boardMoveInstruction(self):
+        print("Below is the movement number of each cell")
+        for i in range(3):
+            for j in range(3):
+                print(3*i+j + 1, end=' ')
+            print()
     def run(self):
         """ Run the game """
+        self.boardMoveInstruction()
+        print("************** Let's start *************")
         self.printBoard()
         while True:
             print("Player {name} turn".format(name = self.ply1.name))
@@ -106,7 +113,7 @@ class TicTacToe:
         if not self.winner:
             print("Game over: Draw!!!")
         else:
-            print("Game over: Player {name} wins".format(name = self.winner.name))
+            print("Game over: Player {name} has won".format(name = self.winner.name))
 
 class TictactoePlayer:
     """ Interface for tictactoe player """
@@ -123,18 +130,10 @@ class HumanPlayer(TictactoePlayer):
     def __init__(self, name, symbol):
         super().__init__(name, symbol)
     def nextMove(self, possibleMoves):
-        possibleRows = set()
-        possibleCols = set()
-        for move in possibleMoves:
-            possibleRows.add(move[0])
-        row = int(input("Choose a row(" + str(possibleRows) + "):"))
-        for move in possibleMoves:
-            if move[0] == row:
-                possibleCols.add(move[1])
-        col = int(input("Choose a col(" + str(possibleCols) + "):"))
-        return (row, col)
+        move = int(input("Choose a move number (1~9):"))
+        return ((move-1)//3, (move-1)%3)
     
-class MCNode:
+class TreeNode:
     """Node for monte carlo tree search"""
     def __init__(self, move, parent, player, state=None):
         self.move = move
@@ -207,12 +206,12 @@ class MCNode:
             for row in range(3):
                 for col in range(3):
                     if self.state[row][col] == self.empty:
-                        child = MCNode(move=(row, col), player=player, parent=self)
+                        child = TreeNode(move=(row, col), player=player, parent=self)
                         self.children.append(child)
     def rollout(self):
         """ Perform random rollout/playout to see if this node can lead to a win/draw/lose and return the result """
         node = self
-        currNode = MCNode(move=node.move, player=node.player, parent=node.parent, state=node.state)
+        currNode = TreeNode(move=node.move, player=node.player, parent=node.parent, state=node.state)
         currPlayer = node.player
         rolloutResult = 0 # draw
         while True:
@@ -271,7 +270,7 @@ class AIPlayer(TictactoePlayer):
         recentOpponentMove = self.opponentMoves[-1] if self.opponentMoves else None
         copyBoard = list(map(list, self.board))
         # Generate root node
-        root = MCNode(move=recentOpponentMove, player=self.AI, state=copyBoard, parent=None)
+        root = TreeNode(move=recentOpponentMove, player=self.AI, state=copyBoard, parent=None)
         root.expand() # Expand children for root
         # Perform N rollouts
         for _ in range(N):
