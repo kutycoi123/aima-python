@@ -183,24 +183,24 @@ class TreeNode:
                 return player
         return 0
 
-    def bestChild(self):
-        """ Return the best child based on heuristic """
+    def bestMove(self):
+        """ Return the best move based on heuristic """
         def heuristic(node):
             if node.numOfVisited == 0 or node.parent.numOfVisited == 0:
                 return float('inf')
             return node.numOfWins / node.numOfVisited + 1.4 * (math.sqrt(math.log(node.parent.numOfVisited)) / node.numOfVisited)
         return max(self.children, key=heuristic)
     
-    def selectBestChild(self):
-        """ Return node itself if it doesn't have children, otherwise return the best child for rollout """
+    def selectNextLegalMove(self):
+        """ Return current node/move if it doesn't have children/next move, otherwise return a good legal move for rollout """
         # Find leaf node
-        leaf = self
-        while leaf.children != []:
-            return leaf.bestChild()
-        return leaf
+        state = self
+        if state.children != []:
+            return state.bestMove()
+        return state
     
     def expand(self):
-        """ Expand children of a node if it doesn't have """
+        """ Expand children of a node/state if it doesn't have """
         player = self.player * -1
         if not self.children and self.__quickCheckWinner() == 0:
             for row in range(3):
@@ -263,8 +263,8 @@ class AIPlayer(TictactoePlayer):
         self.board[i][j] = self.human
         
     def searchGoodMove(self, N=3000):
-        """ Used pure monte carlo tree search to perform random rollouts to find a good move that potentially lead to a draw or win """
-        def bestChildPolicy(node):
+        """ Perform random rollouts to find a good move that potentially lead to a draw or win """
+        def bestMovePolicy(node):
             return node.numOfVisited
         random.seed()
         recentOpponentMove = self.opponentMoves[-1] if self.opponentMoves else None
@@ -274,16 +274,16 @@ class AIPlayer(TictactoePlayer):
         root.expand() # Expand children for root
         # Perform N rollouts
         for _ in range(N):
-            bestChild = root.selectBestChild() # Select best child according to win/lose/draw stats
-            bestChild.expand() # Expand children for best child 
-            rolloutNode = bestChild 
-            if rolloutNode.children != []:
-                rolloutNode = rolloutNode.selectBestChild()
-            rolloutRes = rolloutNode.rollout()
-            rolloutNode.bubbleUpResult(rolloutRes)
+            legalMove = root.selectNextLegalMove() # Select best child according to win/lose/draw stats
+            legalMove.expand() # Expand children for best child 
+            rolloutState = legalMove 
+            if rolloutState.children != []:
+                rolloutState = rolloutState.selectNextLegalMove() # Start from the state where AI is about to take move
+            rolloutRes = rolloutState.rollout() # perform random rollout/playout
+            rolloutState.bubbleUpResult(rolloutRes) 
 
-        bestChild = max(root.children, key=bestChildPolicy)
-        return bestChild.move
+        bestMove = max(root.children, key=bestMovePolicy)
+        return bestMove.move
 
         
             
