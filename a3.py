@@ -60,8 +60,9 @@ class TicTacToe:
     def printBoard(self):
         """ Print the board on screen """
         for i in range(self.size):
+            print('|', end='')
             for j in range(self.size):
-                print(self.board[i][j], end=' ')
+                print(self.board[i][j], end='|')
             print()
         
     def playerMove(self, ply):
@@ -75,17 +76,20 @@ class TicTacToe:
                 continue
             self.updateBoard(ply, plyMove) # Valid move, let's update the board
             self.nPossibleMoves -= 1 
-            return plyMove 
+            return plyMove
+        
     def boardMoveInstruction(self):
         print("Below is the movement number of each cell")
         for i in range(3):
+            print('|', end='')
             for j in range(3):
-                print(3*i+j + 1, end=' ')
-            print()
+                print(3*i+j + 1, end='|')
+            print() # new line
+            
     def run(self):
         """ Run the game """
         self.boardMoveInstruction()
-        print("************** Let's start *************")
+        print("************** Let's start ***************")
         self.printBoard()
         while True:
             print("Player {name} turn".format(name = self.ply1.name))
@@ -130,11 +134,12 @@ class HumanPlayer(TictactoePlayer):
     def __init__(self, name, symbol):
         super().__init__(name, symbol)
     def nextMove(self, possibleMoves):
+        """ Wait for human to choose next move by entering number from keyboard"""
         move = int(input("Choose a move number (1~9):"))
         return ((move-1)//3, (move-1)%3)
     
 class TreeNode:
-    """Node for monte carlo tree search"""
+    """ Tree node for pure Monte Carlo Tree Search """
     def __init__(self, move, parent, player, state=None):
         self.move = move
         self.parent = parent
@@ -149,11 +154,11 @@ class TreeNode:
         self.human = 1
         self.empty = 0
         self.children = []
-        self.numOfVisited = 0
-        self.numOfWins = 0
+        self.numOfVisited = 0 # number of random playout performed on this node
+        self.numOfWins = 0 # number of wins or draws
         
     def __hasKMoves(self, k, startPos, delta, player, board):
-        """ Check if there is k consecutive moves of the same player starting from startPos """
+        """ Check if there are k consecutive moves of the same player starting from startPos """
         numRow = len(board)
         numCol = len(board[0])
         row, col = startPos
@@ -196,11 +201,11 @@ class TreeNode:
         # Find leaf node
         state = self
         if state.children != []:
-            return state.bestMove()
+            return state.bestMove().selectNextLegalMove()
         return state
     
     def expand(self):
-        """ Expand children of a node/state if it doesn't have """
+        """ Expand children(or legal moves) of a node/state """
         player = self.player * -1
         if not self.children and self.__quickCheckWinner() == 0:
             for row in range(3):
@@ -208,35 +213,36 @@ class TreeNode:
                     if self.state[row][col] == self.empty:
                         child = TreeNode(move=(row, col), player=player, parent=self)
                         self.children.append(child)
-    def rollout(self):
-        """ Perform random rollout/playout to see if this node can lead to a win/draw/lose and return the result """
+    def playout(self):
+        """ Perform random playout to see if this node can lead to a win/draw/lose and return the result """
         node = self
         currNode = TreeNode(move=node.move, player=node.player, parent=node.parent, state=node.state)
         currPlayer = node.player
-        rolloutResult = 0 # draw
+        playoutResult = 0.5 # draw
         while True:
             winner = currNode.__quickCheckWinner()
             if winner != 0:
                 if winner == currPlayer:
-                    rolloutResult = -1 # Opponent loses
+                    playoutResult = -1 # Opponent loses
                 else:
-                    rolloutResult = 1 # Opponent wins
+                    playoutResult = 1 # Opponent wins
                 break
             currNode.expand()
             if not currNode.children:
                 break
-            currNode = random.choice(currNode.children) # Random rollout
-        return rolloutResult # draw
+            currNode = random.choice(currNode.children) # Random playout
+        return playoutResult # draw
         
-    def bubbleUpResult(self, rolloutResult):
-        """ Bubble the rollout result from the current node up to the root, something similar to bubble up operation in heap """
+    def bubbleUpResult(self, playoutResult):
+        """ Bubble the playout result from the current node up to the root, something similar to bubble up operation in heap """
         currNode = self
         while currNode:
             currNode.numOfVisited += 1
-            if rolloutResult > 0: # If player wins, then increase number of wins
-                currNode.numOfWins += rolloutResult
+            if playoutResult > 0: # If player wins or draws, then increase number of wins
+                currNode.numOfWins += playoutResult
             currNode = currNode.parent
-            rolloutResult *= -1 # One wins, the other loses and vice versa
+            if playoutResult != 0.5:
+                playoutResult *= -1 # One wins, the other loses and vice versa
         
 class AIPlayer(TictactoePlayer):
     def __init__(self, name, symbol):
@@ -263,7 +269,7 @@ class AIPlayer(TictactoePlayer):
         self.board[i][j] = self.human
         
     def searchGoodMove(self, N=3000):
-        """ Perform random rollouts to find a good move that potentially lead to a draw or win """
+        """ Perform random playouts to find a good move that potentially lead to a draw or win """
         def bestMovePolicy(node):
             return node.numOfVisited
         random.seed()
@@ -272,16 +278,18 @@ class AIPlayer(TictactoePlayer):
         # Generate root node
         root = TreeNode(move=recentOpponentMove, player=self.AI, state=copyBoard, parent=None)
         root.expand() # Expand children for root
-        # Perform N rollouts
+        # Perform N playouts
         for _ in range(N):
-            legalMove = root.selectNextLegalMove() # Select best child according to win/lose/draw stats
-            legalMove.expand() # Expand children for best child 
-            rolloutState = legalMove 
-            if rolloutState.children != []:
-                rolloutState = rolloutState.selectNextLegalMove() # Start from the state where AI is about to take move
-            rolloutRes = rolloutState.rollout() # perform random rollout/playout
-            rolloutState.bubbleUpResult(rolloutRes) 
+            legalMove = root.selectNextLegalMove() # Select a legal move according to win/lose/draw stats
+            legalMove.expand() # Expand to get legal moves for the current state 
+            playoutState = legalMove 
+            if playoutState.children != []:
+                playoutState = playoutState.selectNextLegalMove() # Start from the state where AI is about to take move
+            playoutRes = playoutState.playout() # perform random playout
+            playoutState.bubbleUpResult(playoutRes) 
 
+        for child in root.children:
+            print(child.numOfWins, child.numOfVisited)
         bestMove = max(root.children, key=bestMovePolicy)
         return bestMove.move
 
